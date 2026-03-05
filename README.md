@@ -5,15 +5,15 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/h13/gtm-users)](https://goreportcard.com/report/github.com/h13/gtm-users)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Google Tag Manager のユーザー権限を YAML で宣言的に管理する CLI ツール。
+A CLI tool for declaratively managing Google Tag Manager user permissions via YAML.
 
 ## Features
 
-- **Declarative** — YAML ファイルでユーザー権限の desired state を定義
-- **Plan & Apply** — Terraform ライクなワークフローで変更を安全に適用
-- **Export** — 既存の GTM 権限設定を YAML としてエクスポート
-- **Validation** — 設定ファイルの構文・値チェック
-- **Additive / Authoritative** — 未管理ユーザーの扱いを2モードで制御
+- **Declarative** — Define desired user permissions in a YAML file
+- **Plan & Apply** — Terraform-like workflow for safe, reviewable changes
+- **Export** — Export existing GTM permissions as YAML
+- **Validation** — Syntax and semantic checks on config files
+- **Additive / Authoritative** — Two modes to control how unmanaged users are handled
 
 ## Install
 
@@ -23,7 +23,7 @@ go install github.com/h13/gtm-users/cmd/gtm-users@latest
 
 ## Quick Start
 
-### 1. 設定ファイルを作成
+### 1. Create a config file
 
 ```yaml
 account_id: "123456789"
@@ -42,19 +42,19 @@ users:
         permission: read
 ```
 
-### 2. バリデーション
+### 2. Validate
 
 ```sh
 gtm-users validate --config gtm-users.yaml
 ```
 
-### 3. 差分を確認
+### 3. Preview changes
 
 ```sh
 gtm-users plan --config gtm-users.yaml --credentials sa.json
 ```
 
-### 4. 適用
+### 4. Apply
 
 ```sh
 gtm-users apply --config gtm-users.yaml --credentials sa.json
@@ -64,7 +64,7 @@ gtm-users apply --config gtm-users.yaml --credentials sa.json
 
 ### validate
 
-設定ファイルの構文とセマンティクスを検証する。
+Validate config file syntax and semantics.
 
 ```sh
 gtm-users validate --config gtm-users.yaml
@@ -72,7 +72,7 @@ gtm-users validate --config gtm-users.yaml
 
 ### export
 
-現在の GTM 権限設定を YAML 形式で出力する。
+Export current GTM permissions as YAML.
 
 ```sh
 gtm-users export --account-id 123456789 --credentials sa.json
@@ -80,58 +80,58 @@ gtm-users export --account-id 123456789 --credentials sa.json
 
 ### plan
 
-desired state と actual state の差分を表示する。変更は適用しない。
+Show the diff between desired and actual state. No changes are applied.
 
 ```sh
 gtm-users plan --config gtm-users.yaml --credentials sa.json --format text
 ```
 
-`--format json` で JSON 出力も可能。
+Use `--format json` for JSON output.
 
 ### apply
 
-plan の内容を GTM API に適用する。
+Apply planned changes to the GTM API.
 
 ```sh
 gtm-users apply --config gtm-users.yaml --credentials sa.json
 ```
 
-`--auto-approve` で確認プロンプトをスキップ。
+Use `--auto-approve` to skip the confirmation prompt.
 
 ## Configuration
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `account_id` | Yes | GTM アカウント ID |
-| `mode` | No | `additive`（デフォルト）または `authoritative` |
-| `users` | Yes | ユーザー権限の配列 |
+| `account_id` | Yes | GTM account ID |
+| `mode` | No | `additive` (default) or `authoritative` |
+| `users` | Yes | Array of user permission entries |
 
 ### Mode
 
-- **additive** — 設定ファイルに記載されたユーザーのみ追加・更新する。未記載のユーザーには影響しない。
-- **authoritative** — 設定ファイルに記載されていないユーザーを削除する。
+- **additive** — Only add or update users listed in the config. Unmanaged users are left untouched.
+- **authoritative** — Remove users not listed in the config.
 
 ### Account Access
 
 | Value | Description |
 |-------|-------------|
-| `admin` | アカウント管理者 |
-| `user` | 一般ユーザー |
-| `noAccess` | アカウントレベルのアクセスなし |
+| `admin` | Account administrator |
+| `user` | Standard user |
+| `noAccess` | No account-level access |
 
 ### Container Permission
 
 | Value | Description |
 |-------|-------------|
-| `read` | 読み取りのみ |
-| `edit` | 編集可能 |
-| `approve` | 承認可能 |
-| `publish` | 公開可能 |
+| `read` | Read only |
+| `edit` | Edit access |
+| `approve` | Approve access |
+| `publish` | Publish access |
 
 ## Authentication
 
-GCP サービスアカウントの認証情報 JSON ファイルを `--credentials` フラグで指定する。
-サービスアカウントには `Tag Manager - Manage Users` のスコープが必要。
+Provide a GCP service account credentials JSON file via the `--credentials` flag.
+The service account requires the `Tag Manager - Manage Users` scope.
 
 ## License
 
