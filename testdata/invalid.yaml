@@ -1,0 +1,9 @@
+account_id: ""
+mode: invalid
+
+users:
+  - email: not-an-email
+    account_access: superadmin
+    container_access:
+      - container_id: "INVALID-ID"
+        permission: superwrite
