@@ -1,5 +1,5 @@
 bin/
 coverage.out
-gtm-users
+/gtm-users
 dist/
 *.test
