@@ -1,8 +1,10 @@
 # gtm-users
 
 [![CI](https://github.com/h13/gtm-users/actions/workflows/ci.yaml/badge.svg)](https://github.com/h13/gtm-users/actions/workflows/ci.yaml)
+[![codecov](https://codecov.io/gh/h13/gtm-users/graph/badge.svg)](https://codecov.io/gh/h13/gtm-users)
 [![Go](https://img.shields.io/github/go-mod/go-version/h13/gtm-users)](https://go.dev/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/h13/gtm-users)](https://goreportcard.com/report/github.com/h13/gtm-users)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/h13/gtm-users/badge)](https://scorecard.dev/viewer/?uri=github.com/h13/gtm-users)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-gtm--users-blue?logo=github)](https://github.com/marketplace/actions/gtm-users)
 
