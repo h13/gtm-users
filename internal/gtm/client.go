@@ -1,9 +1,10 @@
 package gtm
 
 import (
+	"cmp"
 	"context"
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/h13/gtm-users/internal/state"
@@ -53,8 +54,8 @@ func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
 				Permission:  ca.Permission,
 			})
 		}
-		sort.Slice(containers, func(i, j int) bool {
-			return containers[i].ContainerID < containers[j].ContainerID
+		slices.SortFunc(containers, func(a, b state.ContainerPermission) int {
+			return cmp.Compare(a.ContainerID, b.ContainerID)
 		})
 
 		users = append(users, state.UserPermission{
@@ -64,8 +65,8 @@ func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
 		})
 	}
 
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Email < users[j].Email
+	slices.SortFunc(users, func(a, b state.UserPermission) int {
+		return cmp.Compare(a.Email, b.Email)
 	})
 
 	return state.AccountState{

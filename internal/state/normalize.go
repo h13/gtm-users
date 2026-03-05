@@ -1,7 +1,8 @@
 package state
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"strings"
 
 	"github.com/h13/gtm-users/internal/config"
@@ -18,8 +19,8 @@ func FromConfig(cfg config.Config) AccountState {
 				Permission:  string(ca.Permission),
 			})
 		}
-		sort.Slice(containers, func(i, j int) bool {
-			return containers[i].ContainerID < containers[j].ContainerID
+		slices.SortFunc(containers, func(a, b ContainerPermission) int {
+			return cmp.Compare(a.ContainerID, b.ContainerID)
 		})
 
 		users = append(users, UserPermission{
@@ -29,8 +30,8 @@ func FromConfig(cfg config.Config) AccountState {
 		})
 	}
 
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].Email < users[j].Email
+	slices.SortFunc(users, func(a, b UserPermission) int {
+		return cmp.Compare(a.Email, b.Email)
 	})
 
 	return AccountState{
