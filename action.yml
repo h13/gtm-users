@@ -1,0 +1,168 @@
+name: "gtm-users"
+description: "Declaratively manage Google Tag Manager user permissions via YAML"
+author: "h13"
+
+branding:
+  icon: "users"
+  color: "blue"
+
+inputs:
+  command:
+    description: "Command to run (validate, plan, apply, export)"
+    required: true
+  config:
+    description: "Path to config file"
+    required: false
+    default: "gtm-users.yaml"
+  credentials:
+    description: "GCP service account credentials JSON content"
+    required: false
+  format:
+    description: "Output format (text, json)"
+    required: false
+    default: "text"
+  auto-approve:
+    description: "Skip confirmation prompt for apply"
+    required: false
+    default: "false"
+  account-id:
+    description: "GTM account ID (required for export)"
+    required: false
+  comment-on-pr:
+    description: "Post plan output as a PR comment"
+    required: false
+    default: "true"
+  go-version:
+    description: "Go version to use for installation"
+    required: false
+    default: "stable"
+
+outputs:
+  result:
+    description: "Command output"
+    value: ${{ steps.run.outputs.result }}
+  has-changes:
+    description: "Whether the plan contains changes (true/false)"
+    value: ${{ steps.run.outputs.has-changes }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+        cache: false
+
+    - name: Install gtm-users
+      shell: bash
+      run: go install github.com/h13/gtm-users/cmd/gtm-users@${{ github.action_ref || 'latest' }}
+
+    - name: Write credentials file
+      if: inputs.credentials != ''
+      shell: bash
+      run: |
+        CRED_FILE=$(mktemp)
+        echo "${{ inputs.credentials }}" > "$CRED_FILE"
+        echo "GTMUSERS_CREDENTIALS_FILE=$CRED_FILE" >> "$GITHUB_ENV"
+
+    - name: Run gtm-users
+      id: run
+      shell: bash
+      run: |
+        set +e
+
+        ARGS=()
+        case "${{ inputs.command }}" in
+          validate)
+            ARGS+=(validate --config "${{ inputs.config }}")
+            ;;
+          plan)
+            ARGS+=(plan --config "${{ inputs.config }}" --format "${{ inputs.format }}")
+            if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
+              ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
+            fi
+            ;;
+          apply)
+            ARGS+=(apply --config "${{ inputs.config }}")
+            if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
+              ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
+            fi
+            if [ "${{ inputs.auto-approve }}" = "true" ]; then
+              ARGS+=(--auto-approve)
+            fi
+            ;;
+          export)
+            ARGS+=(export --account-id "${{ inputs.account-id }}")
+            if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
+              ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
+            fi
+            ;;
+          *)
+            echo "::error::Unknown command: ${{ inputs.command }}"
+            exit 1
+            ;;
+        esac
+
+        OUTPUT=$(gtm-users "${ARGS[@]}" 2>&1)
+        EXIT_CODE=$?
+
+        echo "result<<GTMUSERS_EOF" >> "$GITHUB_OUTPUT"
+        echo "$OUTPUT" >> "$GITHUB_OUTPUT"
+        echo "GTMUSERS_EOF" >> "$GITHUB_OUTPUT"
+
+        if echo "$OUTPUT" | grep -q "No changes"; then
+          echo "has-changes=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "has-changes=true" >> "$GITHUB_OUTPUT"
+        fi
+
+        echo "$OUTPUT"
+        exit $EXIT_CODE
+
+    - name: Cleanup credentials
+      if: always() && inputs.credentials != ''
+      shell: bash
+      run: rm -f "$GTMUSERS_CREDENTIALS_FILE"
+
+    - name: Comment on PR
+      if: >-
+        inputs.command == 'plan'
+        && inputs.comment-on-pr == 'true'
+        && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const output = `#### GTM Users Plan
+
+          \`\`\`
+          ${{ steps.run.outputs.result }}
+          \`\`\`
+
+          *Run by Action: \`${{ github.workflow }}\`*`;
+
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existing = comments.find(c =>
+            c.user.type === 'Bot' && c.body.includes('GTM Users Plan')
+          );
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body: output,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: output,
+            });
+          }
