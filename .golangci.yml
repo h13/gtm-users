@@ -41,11 +41,11 @@ linters:
         - name: exported
           disabled: true
 
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - dupl
-        - goconst
-        - gocognit
-        - gocyclo
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - goconst
+          - gocognit
+          - gocyclo

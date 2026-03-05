@@ -158,6 +158,35 @@ func TestPrintExport(t *testing.T) {
 	}
 }
 
+func TestPrintPlan_DefaultFormat(t *testing.T) {
+	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, "unknown"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !strings.Contains(buf.String(), "No changes") {
+		t.Error("unknown format should fall back to text")
+	}
+}
+
+func TestPrintExport_NoContainers(t *testing.T) {
+	users := []output.ExportUser{
+		{Email: "alice@example.com", AccountAccess: "admin"},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintExport(&buf, "123", users); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if strings.Contains(got, "container_access") {
+		t.Error("should not have container_access for user without containers")
+	}
+}
+
 func TestPrintPlan_ContainerUpdateAndDelete(t *testing.T) {
 	plan := diff.Plan{
 		AccountID: "123",
