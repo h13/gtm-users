@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run tests
+        run: go test ./... -race -coverprofile=coverage.out -covermode=atomic
+      - name: Check coverage
+        run: |
+          total=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          echo "Total coverage: ${total}%"
+          # Fail if testable packages drop below 80%
+          # (cli/gtm are excluded as they require live API)
+          for pkg in config diff output state; do
+            pkg_cov=$(go tool cover -func=coverage.out | grep "internal/${pkg}" | tail -1 | awk '{print $3}' | tr -d '%')
+            if [ -n "$pkg_cov" ]; then
+              echo "  ${pkg}: ${pkg_cov}%"
+              threshold=80
+              if (( $(echo "$pkg_cov < $threshold" | bc -l) )); then
+                echo "::error::Package ${pkg} coverage ${pkg_cov}% is below ${threshold}%"
+                exit 1
+              fi
+            fi
+          done
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: go build -o /dev/null ./cmd/gtm-users/
+      - name: Vet
+        run: go vet ./...
+
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      - name: Run govulncheck
+        run: govulncheck ./...
