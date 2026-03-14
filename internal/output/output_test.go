@@ -115,8 +115,8 @@ func TestPrintPlan_JSONFormat(t *testing.T) {
 		t.Fatalf("invalid JSON: %v\noutput: %s", err, buf.String())
 	}
 
-	if result["AccountID"] != "123" {
-		t.Errorf("AccountID = %v, want 123", result["AccountID"])
+	if result["account_id"] != "123" {
+		t.Errorf("account_id = %v, want 123", result["account_id"])
 	}
 }
 

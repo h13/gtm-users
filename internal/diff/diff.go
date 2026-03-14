@@ -19,26 +19,26 @@ const (
 
 // ContainerChange represents a change to a container permission.
 type ContainerChange struct {
-	ContainerID   string
-	Action        ActionType
-	OldPermission string // empty for add
-	NewPermission string // empty for delete
+	ContainerID   string     `json:"container_id"`
+	Action        ActionType `json:"action"`
+	OldPermission string     `json:"old_permission,omitempty"`
+	NewPermission string     `json:"new_permission,omitempty"`
 }
 
 // UserChange represents a change to a user's permissions.
 type UserChange struct {
-	Email            string
-	Action           ActionType
-	OldAccountAccess string // empty for add
-	NewAccountAccess string // empty for delete
-	ContainerChanges []ContainerChange
+	Email            string            `json:"email"`
+	Action           ActionType        `json:"action"`
+	OldAccountAccess string            `json:"old_account_access,omitempty"`
+	NewAccountAccess string            `json:"new_account_access,omitempty"`
+	ContainerChanges []ContainerChange `json:"container_changes,omitempty"`
 }
 
 // Plan represents the full set of changes to apply.
 type Plan struct {
-	AccountID string
-	Changes   []UserChange
-	Mode      config.Mode
+	AccountID string       `json:"account_id"`
+	Changes   []UserChange `json:"changes"`
+	Mode      config.Mode  `json:"mode"`
 }
 
 // HasChanges returns true if the plan contains any changes.

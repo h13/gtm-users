@@ -53,7 +53,8 @@ jobs:
           # (cli/gtm are excluded as they require live API)
           failed=0
           for pkg in config diff output state; do
-            pkg_cov=$(go test -cover "./internal/${pkg}/" 2>&1 | grep -oP 'coverage: \K[0-9.]+')
+            pkg_path="github.com/h13/gtm-users/internal/${pkg}/"
+            pkg_cov=$(awk -v p="$pkg_path" '$1 ~ p { total += $2; if ($3 > 0) covered += $2 } END { if (total > 0) printf "%.1f", covered * 100 / total }' coverage.out)
             if [ -n "$pkg_cov" ]; then
               echo "  ${pkg}: ${pkg_cov}%"
               if (( $(echo "$pkg_cov < 80" | bc -l) )); then

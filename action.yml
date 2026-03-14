@@ -71,37 +71,43 @@ runs:
     - name: Run gtm-users
       id: run
       shell: bash
+      env:
+        INPUT_COMMAND: ${{ inputs.command }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_AUTO_APPROVE: ${{ inputs.auto-approve }}
+        INPUT_ACCOUNT_ID: ${{ inputs.account-id }}
       run: |
         set +e
 
         ARGS=()
-        case "${{ inputs.command }}" in
+        case "$INPUT_COMMAND" in
           validate)
-            ARGS+=(validate --config "${{ inputs.config }}")
+            ARGS+=(validate --config "$INPUT_CONFIG")
             ;;
           plan)
-            ARGS+=(plan --config "${{ inputs.config }}" --format "${{ inputs.format }}")
+            ARGS+=(plan --config "$INPUT_CONFIG" --format "$INPUT_FORMAT")
             if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
               ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
             fi
             ;;
           apply)
-            ARGS+=(apply --config "${{ inputs.config }}")
+            ARGS+=(apply --config "$INPUT_CONFIG")
             if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
               ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
             fi
-            if [ "${{ inputs.auto-approve }}" = "true" ]; then
+            if [ "$INPUT_AUTO_APPROVE" = "true" ]; then
               ARGS+=(--auto-approve)
             fi
             ;;
           export)
-            ARGS+=(export --account-id "${{ inputs.account-id }}")
+            ARGS+=(export --account-id "$INPUT_ACCOUNT_ID")
             if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
               ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
             fi
             ;;
           *)
-            echo "::error::Unknown command: ${{ inputs.command }}"
+            echo "::error::Unknown command: $INPUT_COMMAND"
             exit 1
             ;;
         esac
@@ -135,16 +141,18 @@ runs:
       uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
       env:
         PLAN_OUTPUT: ${{ steps.run.outputs.result }}
+        WORKFLOW_NAME: ${{ github.workflow }}
       with:
         script: |
           const planOutput = process.env.PLAN_OUTPUT;
+          const workflowName = process.env.WORKFLOW_NAME;
           const output = `#### GTM Users Plan
 
           \`\`\`
           ${planOutput}
           \`\`\`
 
-          *Run by Action: \`${{ github.workflow }}\`*`;
+          *Run by Action: \`${workflowName}\`*`;
 
           const { data: comments } = await github.rest.issues.listComments({
             owner: context.repo.owner,
