@@ -18,6 +18,7 @@ const permNoAccess = "noAccess"
 type Client struct {
 	svc       *tagmanager.Service
 	accountID string
+	pathCache map[string]string // email -> API path, populated by FetchState
 }
 
 // NewClient creates a GTM API client with the given credentials file.
@@ -38,15 +39,47 @@ func (c *Client) accountPath() string {
 	return fmt.Sprintf("accounts/%s", c.accountID)
 }
 
-// FetchState retrieves the current user permissions from the GTM API.
-func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
-	resp, err := c.svc.Accounts.UserPermissions.List(c.accountPath()).Context(ctx).Do()
-	if err != nil {
-		return state.AccountState{}, fmt.Errorf("listing user permissions: %w", err)
+// listAll retrieves all user permissions with pagination support.
+func (c *Client) listAll(ctx context.Context) ([]*tagmanager.UserPermission, error) {
+	var all []*tagmanager.UserPermission
+	pageToken := ""
+
+	for {
+		call := c.svc.Accounts.UserPermissions.List(c.accountPath())
+		if pageToken != "" {
+			call = call.PageToken(pageToken)
+		}
+
+		resp, err := call.Context(ctx).Do()
+		if err != nil {
+			return nil, fmt.Errorf("listing user permissions: %w", err)
+		}
+
+		all = append(all, resp.UserPermission...)
+
+		if resp.NextPageToken == "" {
+			break
+		}
+		pageToken = resp.NextPageToken
 	}
 
-	users := make([]state.UserPermission, 0, len(resp.UserPermission))
-	for _, up := range resp.UserPermission {
+	return all, nil
+}
+
+// FetchState retrieves the current user permissions from the GTM API.
+func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
+	allPerms, err := c.listAll(ctx)
+	if err != nil {
+		return state.AccountState{}, err
+	}
+
+	c.pathCache = make(map[string]string, len(allPerms))
+
+	users := make([]state.UserPermission, 0, len(allPerms))
+	for _, up := range allPerms {
+		email := strings.ToLower(up.EmailAddress)
+		c.pathCache[email] = up.Path
+
 		containers := make([]state.ContainerPermission, 0, len(up.ContainerAccess))
 		for _, ca := range up.ContainerAccess {
 			containers = append(containers, state.ContainerPermission{
@@ -59,7 +92,7 @@ func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
 		})
 
 		users = append(users, state.UserPermission{
-			Email:           strings.ToLower(up.EmailAddress),
+			Email:           email,
 			AccountAccess:   mapAPIAccountAccess(up.AccountAccess),
 			ContainerAccess: containers,
 		})
@@ -87,7 +120,7 @@ func (c *Client) CreateUserPermission(ctx context.Context, user state.UserPermis
 
 // UpdateUserPermission updates an existing user permission.
 func (c *Client) UpdateUserPermission(ctx context.Context, user state.UserPermission) error {
-	path, err := c.findUserPermissionPath(ctx, user.Email)
+	path, err := c.resolveUserPath(ctx, user.Email)
 	if err != nil {
 		return err
 	}
@@ -102,7 +135,7 @@ func (c *Client) UpdateUserPermission(ctx context.Context, user state.UserPermis
 
 // DeleteUserPermission removes a user's permissions from the account.
 func (c *Client) DeleteUserPermission(ctx context.Context, email string) error {
-	path, err := c.findUserPermissionPath(ctx, email)
+	path, err := c.resolveUserPath(ctx, email)
 	if err != nil {
 		return err
 	}
@@ -114,17 +147,29 @@ func (c *Client) DeleteUserPermission(ctx context.Context, email string) error {
 	return nil
 }
 
-func (c *Client) findUserPermissionPath(ctx context.Context, email string) (string, error) {
-	resp, err := c.svc.Accounts.UserPermissions.List(c.accountPath()).Context(ctx).Do()
-	if err != nil {
-		return "", fmt.Errorf("listing user permissions: %w", err)
+// resolveUserPath returns the API path for a user, using the cache when available.
+func (c *Client) resolveUserPath(ctx context.Context, email string) (string, error) {
+	email = strings.ToLower(email)
+
+	if c.pathCache != nil {
+		if path, ok := c.pathCache[email]; ok {
+			return path, nil
+		}
 	}
 
-	email = strings.ToLower(email)
-	for _, up := range resp.UserPermission {
-		if strings.ToLower(up.EmailAddress) == email {
-			return up.Path, nil
-		}
+	// Cache miss: fall back to API call.
+	allPerms, err := c.listAll(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	c.pathCache = make(map[string]string, len(allPerms))
+	for _, up := range allPerms {
+		c.pathCache[strings.ToLower(up.EmailAddress)] = up.Path
+	}
+
+	if path, ok := c.pathCache[email]; ok {
+		return path, nil
 	}
 	return "", fmt.Errorf("user permission not found for %s", email)
 }

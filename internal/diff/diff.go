@@ -1,6 +1,9 @@
 package diff
 
 import (
+	"cmp"
+	"slices"
+
 	"github.com/h13/gtm-users/internal/config"
 	"github.com/h13/gtm-users/internal/state"
 )
@@ -164,6 +167,10 @@ func computeContainerChanges(desired, actual state.UserPermission) []ContainerCh
 			})
 		}
 	}
+
+	slices.SortFunc(changes, func(a, b ContainerChange) int {
+		return cmp.Compare(a.ContainerID, b.ContainerID)
+	})
 
 	return changes
 }

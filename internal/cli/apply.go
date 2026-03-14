@@ -15,11 +15,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newApplyCmd() *cobra.Command {
+func newApplyCmd(opts *rootOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "apply",
 		Short: "Apply the planned changes to GTM",
-		RunE:  runApply,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			autoApprove, _ := cmd.Flags().GetBool("auto-approve")
+			return runApply(opts, autoApprove)
+		},
 	}
 
 	cmd.Flags().Bool("auto-approve", false, "skip interactive approval prompt")
@@ -27,18 +30,22 @@ func newApplyCmd() *cobra.Command {
 	return cmd
 }
 
-func runApply(cmd *cobra.Command, _ []string) error {
-	cfg, err := loadAndValidateConfig()
+func runApply(opts *rootOptions, autoApprove bool) error {
+	cfg, err := config.Load(opts.configPath)
 	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if err := checkValidation(cfg); err != nil {
 		return err
 	}
 
-	if credentialsPath == "" {
+	if opts.credentialsPath == "" {
 		return fmt.Errorf("--credentials flag is required for apply")
 	}
 
 	ctx := context.Background()
-	client, err := gtm.NewClient(ctx, cfg.AccountID, credentialsPath)
+	client, err := gtm.NewClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {
 		return fmt.Errorf("creating GTM client: %w", err)
 	}
@@ -56,34 +63,17 @@ func runApply(cmd *cobra.Command, _ []string) error {
 		return nil
 	}
 
-	if err := output.PrintPlan(os.Stdout, plan, output.FormatText); err != nil {
+	format := output.Format(opts.format)
+	if err := output.PrintPlan(os.Stdout, plan, format); err != nil {
 		return err
 	}
 
-	autoApprove, _ := cmd.Flags().GetBool("auto-approve")
 	if !autoApprove && !confirmApply() {
 		fmt.Println("Apply cancelled.")
 		return nil
 	}
 
 	return executeChanges(ctx, client, plan, desired)
-}
-
-func loadAndValidateConfig() (config.Config, error) {
-	cfg, err := config.Load(configPath)
-	if err != nil {
-		return config.Config{}, fmt.Errorf("loading config: %w", err)
-	}
-
-	if errs := config.Validate(cfg); len(errs) > 0 {
-		fmt.Fprintln(os.Stderr, "Validation errors:")
-		for _, e := range errs {
-			fmt.Fprintf(os.Stderr, "  - %s\n", e)
-		}
-		os.Exit(1)
-	}
-
-	return cfg, nil
 }
 
 func confirmApply() bool {
@@ -93,7 +83,7 @@ func confirmApply() bool {
 	return strings.TrimSpace(strings.ToLower(answer)) == "yes"
 }
 
-func executeChanges(ctx context.Context, client *gtm.Client, plan diff.Plan, desired state.AccountState) error {
+func executeChanges(ctx context.Context, client gtmClient, plan diff.Plan, desired state.AccountState) error {
 	var failures int
 	for _, change := range plan.Changes {
 		if err := applyChange(ctx, client, change, desired); err != nil {
@@ -110,7 +100,7 @@ func executeChanges(ctx context.Context, client *gtm.Client, plan diff.Plan, des
 	return nil
 }
 
-func applyChange(ctx context.Context, client *gtm.Client, change diff.UserChange, desired state.AccountState) error {
+func applyChange(ctx context.Context, client gtmClient, change diff.UserChange, desired state.AccountState) error {
 	switch change.Action {
 	case diff.ActionAdd:
 		user := findDesiredUser(desired, change.Email)

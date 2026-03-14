@@ -13,34 +13,32 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPlanCmd() *cobra.Command {
+func newPlanCmd(opts *rootOptions) *cobra.Command {
 	return &cobra.Command{
 		Use:   "plan",
 		Short: "Show the execution plan (what would change)",
-		RunE:  runPlan,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runPlan(opts)
+		},
 	}
 }
 
-func runPlan(cmd *cobra.Command, args []string) error {
-	cfg, err := config.Load(configPath)
+func runPlan(opts *rootOptions) error {
+	cfg, err := config.Load(opts.configPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	if errs := config.Validate(cfg); len(errs) > 0 {
-		fmt.Fprintln(os.Stderr, "Validation errors:")
-		for _, e := range errs {
-			fmt.Fprintf(os.Stderr, "  - %s\n", e)
-		}
-		os.Exit(1)
+	if err := checkValidation(cfg); err != nil {
+		return err
 	}
 
-	if credentialsPath == "" {
+	if opts.credentialsPath == "" {
 		return fmt.Errorf("--credentials flag is required for plan")
 	}
 
 	ctx := context.Background()
-	client, err := gtm.NewClient(ctx, cfg.AccountID, credentialsPath)
+	client, err := gtm.NewClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {
 		return fmt.Errorf("creating GTM client: %w", err)
 	}
@@ -53,6 +51,6 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	desired := state.FromConfig(cfg)
 	plan := diff.Compute(desired, actual, cfg.Mode)
 
-	format := output.Format(formatFlag)
+	format := output.Format(opts.format)
 	return output.PrintPlan(os.Stdout, plan, format)
 }

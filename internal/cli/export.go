@@ -10,11 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newExportCmd() *cobra.Command {
+func newExportCmd(opts *rootOptions) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "export",
 		Short: "Export current GTM user permissions as YAML",
-		RunE:  runExport,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			accountID, _ := cmd.Flags().GetString("account-id")
+			return runExport(opts, accountID)
+		},
 	}
 
 	cmd.Flags().String("account-id", "", "GTM account ID (required)")
@@ -23,15 +26,13 @@ func newExportCmd() *cobra.Command {
 	return cmd
 }
 
-func runExport(cmd *cobra.Command, _ []string) error {
-	accountID, _ := cmd.Flags().GetString("account-id")
-
-	if credentialsPath == "" {
+func runExport(opts *rootOptions, accountID string) error {
+	if opts.credentialsPath == "" {
 		return fmt.Errorf("--credentials flag is required for export")
 	}
 
 	ctx := context.Background()
-	client, err := gtm.NewClient(ctx, accountID, credentialsPath)
+	client, err := gtm.NewClient(ctx, accountID, opts.credentialsPath)
 	if err != nil {
 		return fmt.Errorf("creating GTM client: %w", err)
 	}
