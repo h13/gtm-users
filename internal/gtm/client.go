@@ -111,9 +111,13 @@ func (c *Client) FetchState(ctx context.Context) (state.AccountState, error) {
 // CreateUserPermission creates a new user permission in the GTM account.
 func (c *Client) CreateUserPermission(ctx context.Context, user state.UserPermission) error {
 	up := buildAPIUserPermission(user)
-	_, err := c.svc.Accounts.UserPermissions.Create(c.accountPath(), up).Context(ctx).Do()
+	created, err := c.svc.Accounts.UserPermissions.Create(c.accountPath(), up).Context(ctx).Do()
 	if err != nil {
 		return fmt.Errorf("creating permission for %s: %w", user.Email, err)
+	}
+
+	if c.pathCache != nil && created.Path != "" {
+		c.pathCache[strings.ToLower(created.EmailAddress)] = created.Path
 	}
 	return nil
 }
