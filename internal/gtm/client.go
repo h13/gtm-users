@@ -148,6 +148,10 @@ func (c *Client) DeleteUserPermission(ctx context.Context, email string) error {
 	if err != nil {
 		return fmt.Errorf("deleting permission for %s: %w", email, err)
 	}
+
+	if c.pathCache != nil {
+		delete(c.pathCache, strings.ToLower(email))
+	}
 	return nil
 }
 

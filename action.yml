@@ -92,7 +92,7 @@ runs:
             fi
             ;;
           apply)
-            ARGS+=(apply --config "$INPUT_CONFIG")
+            ARGS+=(apply --config "$INPUT_CONFIG" --format "$INPUT_FORMAT")
             if [ -n "$GTMUSERS_CREDENTIALS_FILE" ]; then
               ARGS+=(--credentials "$GTMUSERS_CREDENTIALS_FILE")
             fi
@@ -119,12 +119,14 @@ runs:
         echo "$OUTPUT" >> "$GITHUB_OUTPUT"
         echo "GTMUSERS_EOF" >> "$GITHUB_OUTPUT"
 
-        if echo "$OUTPUT" | grep -q "No changes"; then
-          echo "has-changes=false" >> "$GITHUB_OUTPUT"
-        elif [ "$INPUT_FORMAT" = "json" ] && echo "$OUTPUT" | jq -e '.changes | length == 0' > /dev/null 2>&1; then
-          echo "has-changes=false" >> "$GITHUB_OUTPUT"
-        else
-          echo "has-changes=true" >> "$GITHUB_OUTPUT"
+        if [ "$INPUT_COMMAND" = "plan" ]; then
+          if echo "$OUTPUT" | grep -q "No changes"; then
+            echo "has-changes=false" >> "$GITHUB_OUTPUT"
+          elif [ "$INPUT_FORMAT" = "json" ] && echo "$OUTPUT" | jq -e '.changes | length == 0' > /dev/null 2>&1; then
+            echo "has-changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-changes=true" >> "$GITHUB_OUTPUT"
+          fi
         fi
 
         echo "$OUTPUT"
