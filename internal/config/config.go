@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,9 +70,14 @@ func Load(path string) (Config, error) {
 }
 
 // Parse parses YAML bytes into a Config.
+// Unknown fields in the YAML are rejected to catch typos early.
 func Parse(data []byte) (Config, error) {
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+
+	if err := dec.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("parsing YAML: %w", err)
 	}
 

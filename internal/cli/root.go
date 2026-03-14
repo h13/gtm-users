@@ -10,14 +10,16 @@ type rootOptions struct {
 	format          string
 }
 
-func NewRootCmd() *cobra.Command {
+func NewRootCmd(version string) *cobra.Command {
 	opts := &rootOptions{}
 
 	cmd := &cobra.Command{
 		Use:           "gtm-users",
 		Short:         "Declarative Google Tag Manager user permission management",
 		Long:          "Manage GTM user permissions declaratively via YAML config files.",
+		Version:       version,
 		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	cmd.PersistentFlags().StringVar(&opts.configPath, "config", "gtm-users.yaml", "path to config file")
