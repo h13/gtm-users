@@ -270,6 +270,48 @@ func TestCompute_Authoritative_DeleteUser(t *testing.T) {
 	}
 }
 
+func TestCompute_ContainerChangesSorted(t *testing.T) {
+	desired := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{
+				Email:         "alice@example.com",
+				AccountAccess: "user",
+				ContainerAccess: []state.ContainerPermission{
+					{ContainerID: "GTM-CCCC3333", Permission: "read"},
+					{ContainerID: "GTM-AAAA1111", Permission: "edit"},
+					{ContainerID: "GTM-BBBB2222", Permission: "publish"},
+				},
+			},
+		},
+	}
+	actual := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{Email: "alice@example.com", AccountAccess: "user"},
+		},
+	}
+
+	plan := diff.Compute(desired, actual, config.ModeAdditive)
+
+	if !plan.HasChanges() {
+		t.Fatal("expected changes")
+	}
+	changes := plan.Changes[0].ContainerChanges
+	if len(changes) != 3 {
+		t.Fatalf("container changes = %d, want 3", len(changes))
+	}
+	if changes[0].ContainerID != "GTM-AAAA1111" {
+		t.Errorf("changes[0] = %q, want GTM-AAAA1111", changes[0].ContainerID)
+	}
+	if changes[1].ContainerID != "GTM-BBBB2222" {
+		t.Errorf("changes[1] = %q, want GTM-BBBB2222", changes[1].ContainerID)
+	}
+	if changes[2].ContainerID != "GTM-CCCC3333" {
+		t.Errorf("changes[2] = %q, want GTM-CCCC3333", changes[2].ContainerID)
+	}
+}
+
 func TestCompute_ComplexScenario(t *testing.T) {
 	desired := state.AccountState{
 		AccountID: "123",

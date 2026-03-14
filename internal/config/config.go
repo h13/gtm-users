@@ -161,7 +161,9 @@ func validateUser(errs []ValidationError, u User, idx int, seen map[string]bool)
 	case seen[email]:
 		errs = append(errs, ValidationError{Field: prefix + ".email", Message: fmt.Sprintf("duplicate email: %s", u.Email)})
 	}
-	seen[email] = true
+	if email != "" {
+		seen[email] = true
+	}
 
 	if !validAccountAccess[u.AccountAccess] {
 		errs = append(errs, ValidationError{

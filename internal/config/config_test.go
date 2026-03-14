@@ -85,6 +85,21 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+func TestParse_UnknownField(t *testing.T) {
+	data := []byte(`
+account_id: "123"
+unknown_field: oops
+users:
+  - email: a@b.com
+    account_access: user
+`)
+
+	_, err := config.Parse(data)
+	if err == nil {
+		t.Fatal("expected error for unknown field, got nil")
+	}
+}
+
 func TestLoadNotFound(t *testing.T) {
 	_, err := config.Load("nonexistent.yaml")
 	if err == nil {
@@ -209,6 +224,18 @@ func TestValidate_Errors(t *testing.T) {
 				}},
 			},
 			wantErrs: 1,
+		},
+		{
+			name: "multiple empty emails reported as required not duplicate",
+			cfg: config.Config{
+				AccountID: "123",
+				Mode:      config.ModeAdditive,
+				Users: []config.User{
+					{Email: "", AccountAccess: config.AccountAccessUser},
+					{Email: "", AccountAccess: config.AccountAccessUser},
+				},
+			},
+			wantErrs: 2,
 		},
 	}
 
