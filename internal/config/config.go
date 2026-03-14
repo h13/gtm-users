@@ -197,7 +197,9 @@ func validateContainerAccess(errs []ValidationError, ca ContainerAccess, prefix 
 			Message: fmt.Sprintf("duplicate container_id: %s", ca.ContainerID),
 		})
 	}
-	seen[ca.ContainerID] = true
+	if ca.ContainerID != "" {
+		seen[ca.ContainerID] = true
+	}
 
 	if !validContainerPermissions[ca.Permission] {
 		errs = append(errs, ValidationError{

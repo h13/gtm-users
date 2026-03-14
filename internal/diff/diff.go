@@ -65,6 +65,7 @@ func (p Plan) Summary() (adds, updates, deletes int) {
 func Compute(desired, actual state.AccountState, mode config.Mode) Plan {
 	plan := Plan{
 		AccountID: desired.AccountID,
+		Changes:   []UserChange{},
 		Mode:      mode,
 	}
 

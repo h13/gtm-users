@@ -237,6 +237,22 @@ func TestValidate_Errors(t *testing.T) {
 			},
 			wantErrs: 2,
 		},
+		{
+			name: "multiple empty container_ids reported as required not duplicate",
+			cfg: config.Config{
+				AccountID: "123",
+				Mode:      config.ModeAdditive,
+				Users: []config.User{{
+					Email:         "a@b.com",
+					AccountAccess: config.AccountAccessUser,
+					ContainerAccess: []config.ContainerAccess{
+						{ContainerID: "", Permission: config.PermissionRead},
+						{ContainerID: "", Permission: config.PermissionEdit},
+					},
+				}},
+			},
+			wantErrs: 2,
+		},
 	}
 
 	for _, tt := range tests {

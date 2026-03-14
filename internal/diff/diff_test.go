@@ -1,6 +1,7 @@
 package diff_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/h13/gtm-users/internal/config"
@@ -309,6 +310,32 @@ func TestCompute_ContainerChangesSorted(t *testing.T) {
 	}
 	if changes[2].ContainerID != "GTM-CCCC3333" {
 		t.Errorf("changes[2] = %q, want GTM-CCCC3333", changes[2].ContainerID)
+	}
+}
+
+func TestCompute_NoChanges_JSONEmptyArray(t *testing.T) {
+	s := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{Email: "alice@example.com", AccountAccess: "user"},
+		},
+	}
+
+	plan := diff.Compute(s, s, config.ModeAdditive)
+
+	data, err := json.Marshal(plan)
+	if err != nil {
+		t.Fatalf("json.Marshal error: %v", err)
+	}
+
+	var result map[string]json.RawMessage
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("json.Unmarshal error: %v", err)
+	}
+
+	changes := string(result["changes"])
+	if changes != "[]" {
+		t.Errorf("changes = %s, want []", changes)
 	}
 }
 
