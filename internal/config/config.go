@@ -63,6 +63,7 @@ type Config struct {
 	AccountID string          `yaml:"account_id"`
 	Mode      Mode            `yaml:"mode"`
 	Roles     map[string]Role `yaml:"roles,omitempty"`
+	Policy    *Policy         `yaml:"policy,omitempty"`
 	Users     []User          `yaml:"users"`
 }
 
@@ -184,6 +185,8 @@ func Validate(cfg Config) []ValidationError {
 	for i, u := range cfg.Users {
 		errs = validateUser(errs, u, i, seen)
 	}
+
+	errs = append(errs, ValidatePolicy(cfg)...)
 
 	return errs
 }
