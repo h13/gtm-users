@@ -25,7 +25,7 @@ func TestNewRootCmd_Structure(t *testing.T) {
 		subcommands[sub.Name()] = true
 	}
 
-	for _, name := range []string{"validate", "plan", "apply", "export", "init", "drift", "completion", "matrix"} {
+	for _, name := range []string{"validate", "plan", "apply", "export", "init", "drift", "completion", "matrix", "backup"} {
 		if !subcommands[name] {
 			t.Errorf("missing subcommand %q", name)
 		}
