@@ -42,6 +42,7 @@ func TestNewRootCmd_PersistentFlags(t *testing.T) {
 		{"config", "gtm-users.yaml"},
 		{"credentials", ""},
 		{"format", "text"},
+		{"no-color", "false"},
 	}
 
 	for _, tt := range tests {

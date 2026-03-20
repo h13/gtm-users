@@ -33,7 +33,7 @@ func TestPrintPlan_NoChanges(t *testing.T) {
 	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -71,7 +71,7 @@ func TestPrintPlan_TextFormat(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -120,7 +120,7 @@ func TestPrintPlan_JSONFormat(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatJSON); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatJSON, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -176,7 +176,7 @@ func TestPrintPlan_DefaultFormat(t *testing.T) {
 	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, "unknown"); err != nil {
+	if err := output.PrintPlan(&buf, plan, "unknown", false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -220,7 +220,7 @@ func TestPrintPlan_ContainerUpdateAndDelete(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -251,7 +251,7 @@ func TestPrintPlan_UnknownContainerAction(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -274,7 +274,7 @@ func TestPrintPlan_UnknownUserAction(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -303,7 +303,7 @@ func TestPrintPlan_UpdateNoAccountAccessChange(t *testing.T) {
 	}
 
 	var buf bytes.Buffer
-	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
@@ -323,7 +323,7 @@ func TestPrintPlan_TextWriteError(t *testing.T) {
 	}
 
 	w := &errWriter{err: errors.New("write error")}
-	err := output.PrintPlan(w, plan, output.FormatText)
+	err := output.PrintPlan(w, plan, output.FormatText, false)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -333,7 +333,7 @@ func TestPrintPlan_NoChangesWriteError(t *testing.T) {
 	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
 
 	w := &errWriter{err: errors.New("write error")}
-	err := output.PrintPlan(w, plan, output.FormatText)
+	err := output.PrintPlan(w, plan, output.FormatText, false)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -343,7 +343,7 @@ func TestPrintPlan_JSONWriteError(t *testing.T) {
 	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
 
 	w := &errWriter{err: errors.New("write error")}
-	err := output.PrintPlan(w, plan, output.FormatJSON)
+	err := output.PrintPlan(w, plan, output.FormatJSON, false)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -387,7 +387,7 @@ func TestPrintText_SummaryWriteError(t *testing.T) {
 
 	// Allow summary line (call 1), fail on user change (call 2)
 	w := &callCountWriter{remaining: 1}
-	err := output.PrintPlan(w, plan, output.FormatText)
+	err := output.PrintPlan(w, plan, output.FormatText, false)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -447,5 +447,130 @@ func TestWriteExportUser_ContainerDetailError(t *testing.T) {
 	err := output.PrintExport(w, "123", users)
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintPlan_ColoredOutput(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:            "alice@example.com",
+				Action:           diff.ActionAdd,
+				NewAccountAccess: "user",
+			},
+			{
+				Email:            "bob@example.com",
+				Action:           diff.ActionUpdate,
+				OldAccountAccess: "user",
+				NewAccountAccess: "admin",
+			},
+			{
+				Email:            "carol@example.com",
+				Action:           diff.ActionDelete,
+				OldAccountAccess: "user",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatText, true); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+
+	// Verify ANSI codes are present
+	if !strings.Contains(got, "\033[32m") {
+		t.Error("missing green ANSI code for add")
+	}
+	if !strings.Contains(got, "\033[33m") {
+		t.Error("missing yellow ANSI code for update")
+	}
+	if !strings.Contains(got, "\033[31m") {
+		t.Error("missing red ANSI code for delete")
+	}
+	if !strings.Contains(got, "\033[0m") {
+		t.Error("missing reset ANSI code")
+	}
+}
+
+func TestPrintPlan_NoColorOutput(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:            "alice@example.com",
+				Action:           diff.ActionAdd,
+				NewAccountAccess: "user",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatText, false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if strings.Contains(got, "\033[") {
+		t.Errorf("no-color output should not contain ANSI codes: %q", got)
+	}
+}
+
+func TestPrintPlan_JSONIgnoresColor(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:            "alice@example.com",
+				Action:           diff.ActionAdd,
+				NewAccountAccess: "user",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatJSON, true); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if strings.Contains(got, "\033[") {
+		t.Errorf("JSON output should not contain ANSI codes: %q", got)
+	}
+}
+
+func TestColorForAction(t *testing.T) {
+	tests := []struct {
+		action diff.ActionType
+		want   string
+	}{
+		{diff.ActionAdd, "\033[32m"},
+		{diff.ActionUpdate, "\033[33m"},
+		{diff.ActionDelete, "\033[31m"},
+		{"unknown", ""},
+	}
+
+	for _, tt := range tests {
+		got := output.ColorForAction(tt.action)
+		if got != tt.want {
+			t.Errorf("ColorForAction(%q) = %q, want %q", tt.action, got, tt.want)
+		}
+	}
+}
+
+func TestColorize(t *testing.T) {
+	got := output.Colorize("\033[32m", "hello")
+	if got != "\033[32mhello\033[0m" {
+		t.Errorf("Colorize = %q, want colored string", got)
+	}
+
+	got = output.Colorize("", "hello")
+	if got != "hello" {
+		t.Errorf("Colorize with empty color = %q, want plain string", got)
 	}
 }

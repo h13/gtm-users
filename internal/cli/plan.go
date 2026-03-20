@@ -50,5 +50,5 @@ func runPlan(opts *rootOptions) error {
 	plan := diff.Compute(desired, actual, cfg.Mode)
 
 	format := output.Format(opts.format)
-	return output.PrintPlan(opts.stdout, plan, format)
+	return output.PrintPlan(opts.stdout, plan, format, !opts.noColor)
 }

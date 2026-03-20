@@ -34,6 +34,7 @@ func newTestRootCmd(t *testing.T, mock *mockClient, configYAML string) (*bytes.B
 	cmd.PersistentFlags().StringVar(&opts.configPath, "config", path, "path to config file")
 	cmd.PersistentFlags().StringVar(&opts.credentialsPath, "credentials", "fake-creds.json", "credentials")
 	cmd.PersistentFlags().StringVar(&opts.format, "format", "text", "output format")
+	cmd.PersistentFlags().BoolVar(&opts.noColor, "no-color", false, "disable colored output")
 
 	cmd.AddCommand(
 		newValidateCmd(opts),
