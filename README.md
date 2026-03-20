@@ -266,6 +266,40 @@ jobs:
           auto-approve: "true"
 ```
 
+## GitLab CI
+
+```yaml
+stages:
+  - validate
+  - deploy
+
+variables:
+  GTM_USERS_VERSION: "v1.2.0"
+
+.gtm-users:
+  image: golang:latest
+  before_script:
+    - go install github.com/h13/gtm-users/cmd/gtm-users@$GTM_USERS_VERSION
+
+plan:
+  extends: .gtm-users
+  stage: validate
+  script:
+    - gtm-users plan --config gtm-users.yaml --credentials "$GCP_CREDENTIALS_FILE"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+apply:
+  extends: .gtm-users
+  stage: deploy
+  script:
+    - gtm-users apply --config gtm-users.yaml --credentials "$GCP_CREDENTIALS_FILE" --auto-approve
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - gtm-users.yaml
+```
+
 ## Authentication
 
 Provide a GCP service account credentials JSON file via the `--credentials` flag.
