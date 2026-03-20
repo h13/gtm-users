@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/h13/gtm-users/internal/config"
@@ -191,5 +192,174 @@ func TestApplyChange_DeleteError(t *testing.T) {
 	}
 	if len(mock.deleteCalls) != 1 {
 		t.Errorf("delete calls = %d, want 1", len(mock.deleteCalls))
+	}
+}
+
+func TestRunApply_AutoApproveSuccess(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123456789",
+		},
+	}
+	opts := newTestOpts(t, mock, validConfig)
+
+	if err := runApply(opts, true); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunApply_NoChanges(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123456789",
+			Users: []state.UserPermission{
+				{
+					Email:         "alice@example.com",
+					AccountAccess: "user",
+					ContainerAccess: []state.ContainerPermission{
+						{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+					},
+				},
+			},
+		},
+	}
+	opts := newTestOpts(t, mock, validConfig)
+
+	if err := runApply(opts, true); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunApply_ConfigLoadError(t *testing.T) {
+	opts := &rootOptions{
+		configPath:      "/nonexistent.yaml",
+		credentialsPath: "fake.json",
+		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
+			return &mockClient{}, nil
+		},
+	}
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestRunApply_ValidationError(t *testing.T) {
+	mock := &mockClient{}
+	opts := newTestOpts(t, mock, invalidConfig)
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+}
+
+func TestRunApply_MissingCredentials(t *testing.T) {
+	path := writeTempConfig(t, validConfig)
+	opts := &rootOptions{
+		configPath:      path,
+		credentialsPath: "",
+		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
+			return &mockClient{}, nil
+		},
+	}
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected error for missing credentials, got nil")
+	}
+}
+
+func TestRunApply_ClientError(t *testing.T) {
+	opts := newTestOptsWithClientErr(t, validConfig, errors.New("auth failed"))
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestRunApply_FetchStateError(t *testing.T) {
+	mock := &mockClient{
+		fetchErr: errors.New("API unavailable"),
+	}
+	opts := newTestOpts(t, mock, validConfig)
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestConfirmApply(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  bool
+	}{
+		{"yes", "yes\n", true},
+		{"YES", "YES\n", true},
+		{"Yes", "Yes\n", true},
+		{"no", "no\n", false},
+		{"empty", "\n", false},
+		{"y_only", "y\n", false},
+		{"random", "maybe\n", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := strings.NewReader(tt.input)
+			got := confirmApply(r)
+			if got != tt.want {
+				t.Errorf("confirmApply(%q) = %v, want %v", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNewApplyCmd(t *testing.T) {
+	opts := &rootOptions{}
+	cmd := newApplyCmd(opts)
+
+	if cmd.Use != "apply" {
+		t.Errorf("use = %q, want %q", cmd.Use, "apply")
+	}
+
+	f := cmd.Flags().Lookup("auto-approve")
+	if f == nil {
+		t.Error("missing auto-approve flag")
+	}
+}
+
+func TestNewPlanCmd(t *testing.T) {
+	opts := &rootOptions{}
+	cmd := newPlanCmd(opts)
+
+	if cmd.Use != "plan" {
+		t.Errorf("use = %q, want %q", cmd.Use, "plan")
+	}
+}
+
+func TestNewExportCmd(t *testing.T) {
+	opts := &rootOptions{}
+	cmd := newExportCmd(opts)
+
+	if cmd.Use != "export" {
+		t.Errorf("use = %q, want %q", cmd.Use, "export")
+	}
+
+	f := cmd.Flags().Lookup("account-id")
+	if f == nil {
+		t.Error("missing account-id flag")
+	}
+}
+
+func TestNewValidateCmd(t *testing.T) {
+	opts := &rootOptions{}
+	cmd := newValidateCmd(opts)
+
+	if cmd.Use != "validate" {
+		t.Errorf("use = %q, want %q", cmd.Use, "validate")
 	}
 }

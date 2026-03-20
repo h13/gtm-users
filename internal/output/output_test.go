@@ -3,6 +3,7 @@ package output_test
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -10,6 +11,28 @@ import (
 	"github.com/h13/gtm-users/internal/diff"
 	"github.com/h13/gtm-users/internal/output"
 )
+
+type errWriter struct{ err error }
+
+func (w *errWriter) Write([]byte) (int, error) { return 0, w.err }
+
+// limitedWriter fails after writing n bytes.
+type limitedWriter struct {
+	remaining int
+}
+
+func (w *limitedWriter) Write(p []byte) (int, error) {
+	if w.remaining <= 0 {
+		return 0, errors.New("write limit exceeded")
+	}
+	if len(p) > w.remaining {
+		n := w.remaining
+		w.remaining = 0
+		return n, errors.New("write limit exceeded")
+	}
+	w.remaining -= len(p)
+	return len(p), nil
+}
 
 func TestPrintPlan_NoChanges(t *testing.T) {
 	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
@@ -59,7 +82,6 @@ func TestPrintPlan_TextFormat(t *testing.T) {
 
 	got := buf.String()
 
-	// Check summary line
 	if !strings.Contains(got, "1 to add") {
 		t.Errorf("missing '1 to add' in output")
 	}
@@ -70,7 +92,6 @@ func TestPrintPlan_TextFormat(t *testing.T) {
 		t.Errorf("missing '1 to destroy' in output")
 	}
 
-	// Check user entries
 	if !strings.Contains(got, "+ user alice@example.com") {
 		t.Errorf("missing add for alice")
 	}
@@ -81,12 +102,10 @@ func TestPrintPlan_TextFormat(t *testing.T) {
 		t.Errorf("missing delete for carol")
 	}
 
-	// Check container change
 	if !strings.Contains(got, "+ container GTM-AAAA1111: publish") {
 		t.Errorf("missing container add")
 	}
 
-	// Check account access change
 	if !strings.Contains(got, "user → admin") {
 		t.Errorf("missing account access change arrow")
 	}
@@ -216,5 +235,222 @@ func TestPrintPlan_ContainerUpdateAndDelete(t *testing.T) {
 	}
 	if !strings.Contains(got, "- container GTM-BBBB2222: edit") {
 		t.Errorf("missing container delete: %s", got)
+	}
+}
+
+func TestPrintPlan_UnknownContainerAction(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:            "alice@example.com",
+				Action:           diff.ActionUpdate,
+				OldAccountAccess: "user",
+				NewAccountAccess: "user",
+				ContainerChanges: []diff.ContainerChange{
+					{ContainerID: "GTM-AAAA1111", Action: "unknown"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if !strings.Contains(got, "? container GTM-AAAA1111") {
+		t.Errorf("missing unknown container action: %s", got)
+	}
+}
+
+func TestPrintPlan_UnknownUserAction(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:  "alice@example.com",
+				Action: "unknown",
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Unknown action produces no lines for the user, but summary is still printed
+	got := buf.String()
+	if !strings.Contains(got, "Plan:") {
+		t.Errorf("missing plan summary: %s", got)
+	}
+}
+
+func TestPrintPlan_UpdateNoAccountAccessChange(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{
+				Email:            "alice@example.com",
+				Action:           diff.ActionUpdate,
+				OldAccountAccess: "user",
+				NewAccountAccess: "user",
+				ContainerChanges: []diff.ContainerChange{
+					{ContainerID: "GTM-AAAA1111", Action: diff.ActionAdd, NewPermission: "read"},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	if err := output.PrintPlan(&buf, plan, output.FormatText); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if strings.Contains(got, "→") {
+		t.Errorf("should not show arrow when account access unchanged: %s", got)
+	}
+}
+
+func TestPrintPlan_TextWriteError(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{Email: "alice@example.com", Action: diff.ActionAdd, NewAccountAccess: "user"},
+		},
+	}
+
+	w := &errWriter{err: errors.New("write error")}
+	err := output.PrintPlan(w, plan, output.FormatText)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintPlan_NoChangesWriteError(t *testing.T) {
+	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
+
+	w := &errWriter{err: errors.New("write error")}
+	err := output.PrintPlan(w, plan, output.FormatText)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintPlan_JSONWriteError(t *testing.T) {
+	plan := diff.Plan{AccountID: "123", Mode: config.ModeAdditive}
+
+	w := &errWriter{err: errors.New("write error")}
+	err := output.PrintPlan(w, plan, output.FormatJSON)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintExport_WriteError(t *testing.T) {
+	users := []output.ExportUser{
+		{Email: "alice@example.com", AccountAccess: "admin"},
+	}
+
+	w := &errWriter{err: errors.New("write error")}
+	err := output.PrintExport(w, "123", users)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintExport_EmptyUsers(t *testing.T) {
+	var buf bytes.Buffer
+	if err := output.PrintExport(&buf, "123", nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := buf.String()
+	if !strings.Contains(got, "account_id:") {
+		t.Error("missing account_id header")
+	}
+	if !strings.Contains(got, "users:") {
+		t.Error("missing users header")
+	}
+}
+
+func TestPrintText_SummaryWriteError(t *testing.T) {
+	plan := diff.Plan{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Changes: []diff.UserChange{
+			{Email: "alice@example.com", Action: diff.ActionAdd, NewAccountAccess: "user"},
+		},
+	}
+
+	// Allow summary line to be written, but fail on user change
+	w := &limitedWriter{remaining: 50}
+	err := output.PrintPlan(w, plan, output.FormatText)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintExport_UserWriteError(t *testing.T) {
+	users := []output.ExportUser{
+		{
+			Email:         "alice@example.com",
+			AccountAccess: "user",
+			ContainerAccess: []output.ExportContainerAccess{
+				{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+			},
+		},
+	}
+
+	// Allow header to be written, fail on user
+	w := &limitedWriter{remaining: 40}
+	err := output.PrintExport(w, "123", users)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestWriteExportUser_ContainerHeaderError(t *testing.T) {
+	users := []output.ExportUser{
+		{
+			Email:         "alice@example.com",
+			AccountAccess: "user",
+			ContainerAccess: []output.ExportContainerAccess{
+				{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+			},
+		},
+	}
+
+	// Allow header + email line, fail on container_access header
+	w := &limitedWriter{remaining: 80}
+	err := output.PrintExport(w, "123", users)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestWriteExportUser_ContainerDetailError(t *testing.T) {
+	users := []output.ExportUser{
+		{
+			Email:         "alice@example.com",
+			AccountAccess: "user",
+			ContainerAccess: []output.ExportContainerAccess{
+				{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+			},
+		},
+	}
+
+	// Allow header + email + container_access header, fail on container detail
+	w := &limitedWriter{remaining: 120}
+	err := output.PrintExport(w, "123", users)
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }

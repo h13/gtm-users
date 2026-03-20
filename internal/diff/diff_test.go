@@ -339,6 +339,48 @@ func TestCompute_NoChanges_JSONEmptyArray(t *testing.T) {
 	}
 }
 
+func TestCompute_AddUserNoContainers(t *testing.T) {
+	desired := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{Email: "alice@example.com", AccountAccess: "user"},
+		},
+	}
+	actual := state.AccountState{AccountID: "123"}
+
+	plan := diff.Compute(desired, actual, config.ModeAdditive)
+
+	if !plan.HasChanges() {
+		t.Fatal("expected changes")
+	}
+	if len(plan.Changes[0].ContainerChanges) != 0 {
+		t.Errorf("container changes = %d, want 0", len(plan.Changes[0].ContainerChanges))
+	}
+}
+
+func TestCompute_MixedExistingAndNew(t *testing.T) {
+	desired := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{Email: "alice@example.com", AccountAccess: "user"},
+			{Email: "bob@example.com", AccountAccess: "admin"},
+		},
+	}
+	actual := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{Email: "alice@example.com", AccountAccess: "user"},
+		},
+	}
+
+	plan := diff.Compute(desired, actual, config.ModeAuthoritative)
+
+	adds, _, _ := plan.Summary()
+	if adds != 1 {
+		t.Errorf("adds = %d, want 1", adds)
+	}
+}
+
 func TestCompute_ComplexScenario(t *testing.T) {
 	desired := state.AccountState{
 		AccountID: "123",

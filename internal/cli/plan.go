@@ -7,7 +7,6 @@ import (
 
 	"github.com/h13/gtm-users/internal/config"
 	"github.com/h13/gtm-users/internal/diff"
-	"github.com/h13/gtm-users/internal/gtm"
 	"github.com/h13/gtm-users/internal/output"
 	"github.com/h13/gtm-users/internal/state"
 	"github.com/spf13/cobra"
@@ -38,7 +37,7 @@ func runPlan(opts *rootOptions) error {
 	}
 
 	ctx := context.Background()
-	client, err := gtm.NewClient(ctx, cfg.AccountID, opts.credentialsPath)
+	client, err := opts.newClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {
 		return fmt.Errorf("creating GTM client: %w", err)
 	}

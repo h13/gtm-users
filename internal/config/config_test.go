@@ -128,6 +128,15 @@ func TestValidate_Valid(t *testing.T) {
 	}
 }
 
+func TestValidationError_Error(t *testing.T) {
+	e := config.ValidationError{Field: "users[0].email", Message: "required"}
+	got := e.Error()
+	want := "users[0].email: required"
+	if got != want {
+		t.Errorf("Error() = %q, want %q", got, want)
+	}
+}
+
 func TestValidate_Errors(t *testing.T) {
 	tests := []struct {
 		name     string

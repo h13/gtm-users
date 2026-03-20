@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/h13/gtm-users/internal/gtm"
 	"github.com/h13/gtm-users/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +31,7 @@ func runExport(opts *rootOptions, accountID string) error {
 	}
 
 	ctx := context.Background()
-	client, err := gtm.NewClient(ctx, accountID, opts.credentialsPath)
+	client, err := opts.newClient(ctx, accountID, opts.credentialsPath)
 	if err != nil {
 		return fmt.Errorf("creating GTM client: %w", err)
 	}
