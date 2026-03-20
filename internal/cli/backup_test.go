@@ -184,6 +184,24 @@ func TestRunBackup_FetchError(t *testing.T) {
 	}
 }
 
+func TestRunBackup_CreateFileError(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123"},
+	}
+	opts := &rootOptions{
+		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
+		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
+			return mock, nil
+		},
+	}
+
+	err := runBackup(opts, "123", "/nonexistent-dir/backup.yaml")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
 func TestNewBackupCmd_Structure(t *testing.T) {
 	opts := &rootOptions{}
 	cmd := newBackupCmd(opts)

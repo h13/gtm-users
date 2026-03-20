@@ -176,6 +176,53 @@ func TestIntegration_DriftCommand_DriftDetected(t *testing.T) {
 	}
 }
 
+func TestIntegration_MatrixCommand(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123",
+			Users: []state.UserPermission{
+				{
+					Email:         "alice@example.com",
+					AccountAccess: "user",
+					ContainerAccess: []state.ContainerPermission{
+						{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+					},
+				},
+			},
+		},
+	}
+	_, run := newTestRootCmd(t, mock, validConfig)
+
+	if err := run("matrix", "--account-id", "123"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIntegration_BackupCommand(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123",
+			Users: []state.UserPermission{
+				{Email: "alice@example.com", AccountAccess: "user"},
+			},
+		},
+	}
+	_, run := newTestRootCmd(t, mock, validConfig)
+
+	outPath := filepath.Join(t.TempDir(), "backup.yaml")
+	if err := run("backup", "--account-id", "123", "-o", outPath); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIntegration_CompletionCommand(t *testing.T) {
+	_, run := newTestRootCmd(t, &mockClient{}, validConfig)
+
+	if err := run("completion", "bash"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestIntegration_VersionFlag(t *testing.T) {
 	cmd := NewRootCmd("1.2.3")
 	cmd.SetArgs([]string{"--version"})

@@ -2,6 +2,7 @@ package output_test
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -113,5 +114,24 @@ func TestPrintMatrix_MissingPermission(t *testing.T) {
 	// The second line (alice's row) should contain a dash for the missing container.
 	if !strings.Contains(lines[1], "-") {
 		t.Error("expected dash for missing permission")
+	}
+}
+
+func TestPrintMatrix_EmptyWriteError(t *testing.T) {
+	w := &errWriter{err: errors.New("write error")}
+	err := output.PrintMatrix(w, nil, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestPrintMatrix_WriteError(t *testing.T) {
+	w := &errWriter{err: errors.New("write error")}
+	entries := []output.MatrixEntry{
+		{Email: "alice@example.com", Permissions: map[string]string{"GTM-AAAA": "read"}},
+	}
+	err := output.PrintMatrix(w, entries, []string{"GTM-AAAA"})
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
