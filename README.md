@@ -1,22 +1,26 @@
 # gtm-users
 
+Declarative Google Tag Manager permission management — plan, review, apply.
+
 [![CI](https://github.com/h13/gtm-users/actions/workflows/ci.yaml/badge.svg)](https://github.com/h13/gtm-users/actions/workflows/ci.yaml)
 [![codecov](https://codecov.io/gh/h13/gtm-users/graph/badge.svg)](https://codecov.io/gh/h13/gtm-users)
 [![Go](https://img.shields.io/github/go-mod/go-version/h13/gtm-users)](https://go.dev/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/h13/gtm-users)](https://goreportcard.com/report/github.com/h13/gtm-users)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/h13/gtm-users/badge)](https://scorecard.dev/viewer/?uri=github.com/h13/gtm-users)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/12217/badge)](https://www.bestpractices.dev/projects/12217)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub Marketplace](https://img.shields.io/badge/Marketplace-gtm--users-blue?logo=github)](https://github.com/marketplace/actions/gtm-users)
 
-A CLI tool for declaratively managing Google Tag Manager user permissions via YAML.
-
 ## Features
 
-- **Declarative** — Define desired user permissions in a YAML file
 - **Plan & Apply** — Terraform-like workflow for safe, reviewable changes
-- **Export** — Export existing GTM permissions as YAML
-- **Validation** — Syntax and semantic checks on config files
-- **Additive / Authoritative** — Two modes to control how unmanaged users are handled
+- **Roles & Policy** — Reusable permission templates with admin limits and approval rules
+- **Drift Detection** — Detect unauthorized changes via CI cron
+- **Color Diff** — Green/yellow/red output for add/update/delete
+- **Config Includes** — Split configs across files for large organizations
+- **Backup** — Save current GTM state as YAML snapshots
+- **Permission Matrix** — User × container permission overview
+- **GitHub Action** — Plan on PR, apply on merge with PR comments
 
 ## Install
 
@@ -24,137 +28,198 @@ A CLI tool for declaratively managing Google Tag Manager user permissions via YA
 go install github.com/h13/gtm-users/cmd/gtm-users@latest
 ```
 
+### Shell completion
+
+```sh
+source <(gtm-users completion bash)   # bash
+source <(gtm-users completion zsh)    # zsh
+gtm-users completion fish | source    # fish
+```
+
 ## Quick Start
 
-### 1. Create a config file
+### 1. Bootstrap from existing GTM state
+
+```sh
+gtm-users init --account-id 123456789 --credentials sa.json
+```
+
+### 2. Or create a config file manually
 
 ```yaml
 account_id: "123456789"
 mode: additive
 
-users:
-  - email: alice@example.com
-    account_access: admin
-    container_access:
-      - container_id: "GTM-XXXX"
-        permission: publish
-  - email: bob@example.com
+roles:
+  viewer:
     account_access: user
     container_access:
       - container_id: "GTM-XXXX"
         permission: read
+  publisher:
+    account_access: user
+    container_access:
+      - container_id: "GTM-XXXX"
+        permission: publish
+
+policy:
+  max_admins: 2
+  require_approve_for_publish:
+    - "GTM-XXXX"
+
+users:
+  - email: alice@example.com
+    role: publisher
+  - email: bob@example.com
+    role: viewer
+  - email: carol@example.com
+    account_access: admin
 ```
 
-### 2. Validate
+### 3. Validate
 
 ```sh
 gtm-users validate --config gtm-users.yaml
 ```
 
-### 3. Preview changes
+### 4. Preview changes
 
 ```sh
 gtm-users plan --config gtm-users.yaml --credentials sa.json
 ```
 
-### 4. Apply
+### 5. Apply
 
 ```sh
 gtm-users apply --config gtm-users.yaml --credentials sa.json
 ```
 
-## Usage
+## Commands
 
-### validate
+| Command      | Description                                       |
+| ------------ | ------------------------------------------------- |
+| `validate`   | Check config syntax and semantics offline         |
+| `plan`       | Show diff between desired and actual state        |
+| `apply`      | Apply planned changes to the GTM API              |
+| `export`     | Export current GTM permissions as YAML            |
+| `init`       | Bootstrap a config file from current GTM state    |
+| `drift`      | Detect configuration drift (exit code 2 if found) |
+| `matrix`     | Display user × container permission matrix        |
+| `backup`     | Save current GTM state as a YAML snapshot         |
+| `completion` | Generate shell completion scripts                 |
 
-Validate config file syntax and semantics.
+### Global flags
 
-```sh
-gtm-users validate --config gtm-users.yaml
-```
-
-### export
-
-Export current GTM permissions as YAML.
-
-```sh
-gtm-users export --account-id 123456789 --credentials sa.json
-```
-
-### plan
-
-Show the diff between desired and actual state. No changes are applied.
-
-```sh
-gtm-users plan --config gtm-users.yaml --credentials sa.json --format text
-```
-
-Use `--format json` for JSON output.
-
-### apply
-
-Apply planned changes to the GTM API.
-
-```sh
-gtm-users apply --config gtm-users.yaml --credentials sa.json
-```
-
-Use `--auto-approve` to skip the confirmation prompt.
+| Flag            | Default          | Description                                  |
+| --------------- | ---------------- | -------------------------------------------- |
+| `--config`      | `gtm-users.yaml` | Path to config file                          |
+| `--credentials` | —                | Path to GCP service account credentials JSON |
+| `--format`      | `text`           | Output format (`text` or `json`)             |
+| `--no-color`    | `false`          | Disable colored output                       |
 
 ## Configuration
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `account_id` | Yes | GTM account ID |
-| `mode` | No | `additive` (default) or `authoritative` |
-| `users` | Yes | Array of user permission entries |
+| Field        | Required | Description                                            |
+| ------------ | -------- | ------------------------------------------------------ |
+| `account_id` | Yes      | GTM account ID                                         |
+| `mode`       | No       | `additive` (default) or `authoritative`                |
+| `includes`   | No       | List of config files to include                        |
+| `roles`      | No       | Reusable permission templates                          |
+| `policy`     | No       | Validation rules (admin limits, approval requirements) |
+| `users`      | Yes      | Array of user permission entries                       |
 
 ### Mode
 
 - **additive** — Only add or update users listed in the config. Unmanaged users are left untouched.
 - **authoritative** — Remove users not listed in the config.
 
-### Account Access
+### Roles
 
-| Value | Description |
-|-------|-------------|
-| `admin` | Account administrator |
-| `user` | Standard user |
+Define reusable permission templates and assign them to users:
+
+```yaml
+roles:
+  editor:
+    account_access: user
+    container_access:
+      - container_id: "GTM-XXXX"
+        permission: edit
+
+users:
+  - email: alice@example.com
+    role: editor
+```
+
+Users can override role fields by specifying them inline.
+
+### Policy
+
+Enforce organizational rules:
+
+```yaml
+policy:
+  max_admins: 2 # limit admin count
+  require_approve_for_publish:
+    - "GTM-XXXX" # publish requires approve
+```
+
+### Config includes
+
+Split large configs across files:
+
+```yaml
+includes:
+  - roles/common.yaml
+  - teams/engineering.yaml
+```
+
+Included roles merge with the main config (main overrides on conflict). Users are appended.
+
+### Account access
+
+| Value      | Description             |
+| ---------- | ----------------------- |
+| `admin`    | Account administrator   |
+| `user`     | Standard user           |
 | `noAccess` | No account-level access |
 
-### Container Permission
+### Container permission
 
-| Value | Description |
-|-------|-------------|
-| `read` | Read only |
-| `edit` | Edit access |
+| Value     | Description    |
+| --------- | -------------- |
+| `read`    | Read only      |
+| `edit`    | Edit access    |
 | `approve` | Approve access |
 | `publish` | Publish access |
+
+## Drift detection
+
+Run `drift` on a schedule to detect unauthorized changes:
+
+```yaml
+# .github/workflows/drift.yaml
+on:
+  schedule:
+    - cron: "0 9 * * 1-5"
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: h13/gtm-users@v1
+        with:
+          command: drift
+          credentials: ${{ secrets.GCP_SA_KEY }}
+```
+
+Exit code 2 indicates drift was detected.
 
 ## GitHub Action
 
 Available on the [GitHub Marketplace](https://github.com/marketplace/actions/gtm-users).
 
-### Inputs
-
-| Input | Required | Default | Description |
-|-------|----------|---------|-------------|
-| `command` | Yes | — | Command to run (`validate`, `plan`, `apply`, `export`) |
-| `config` | No | `gtm-users.yaml` | Path to config file |
-| `credentials` | No | — | GCP service account credentials JSON content |
-| `format` | No | `text` | Output format (`text`, `json`) |
-| `auto-approve` | No | `false` | Skip confirmation prompt for `apply` |
-| `account-id` | No | — | GTM account ID (required for `export`) |
-| `comment-on-pr` | No | `true` | Post plan output as a PR comment |
-
-### Outputs
-
-| Output | Description |
-|--------|-------------|
-| `result` | Command output |
-| `has-changes` | Whether the plan contains changes (`true`/`false`) |
-
-### Example: Plan on PR, Apply on merge
+### Example: Plan on PR, apply on merge
 
 ```yaml
 name: GTM Users
