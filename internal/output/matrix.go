@@ -23,7 +23,8 @@ func PrintMatrix(w io.Writer, entries []MatrixEntry, containerIDs []string) erro
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 
 	// Header row.
-	header := []string{"USER"}
+	header := make([]string, 0, 1+len(containerIDs))
+	header = append(header, "USER")
 	header = append(header, containerIDs...)
 	if _, err := fmt.Fprintln(tw, strings.Join(header, "\t")); err != nil {
 		return err

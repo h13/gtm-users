@@ -199,7 +199,7 @@ func TestNewBackupCmd_Structure(t *testing.T) {
 
 	f = cmd.Flags().Lookup("output")
 	if f == nil {
-		t.Error("missing output flag")
+		t.Fatal("missing output flag")
 	}
 	if f.Shorthand != "o" {
 		t.Errorf("output shorthand = %q, want 'o'", f.Shorthand)
