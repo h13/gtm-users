@@ -581,3 +581,44 @@ users:
 		t.Errorf("account_access = %q, want admin (base override)", cfg.Users[0].AccountAccess)
 	}
 }
+
+func TestLoad_ResolveRolesError(t *testing.T) {
+	dir := t.TempDir()
+
+	writeFile(t, dir, "main.yaml", `
+account_id: "123"
+mode: additive
+roles:
+  viewer:
+    account_access: user
+users:
+  - email: alice@example.com
+    role: nonexistent
+`)
+
+	_, err := config.Load(filepath.Join(dir, "main.yaml"))
+	if err == nil {
+		t.Fatal("expected error for undefined role, got nil")
+	}
+}
+
+func TestLoad_IncludeParseRawError(t *testing.T) {
+	dir := t.TempDir()
+
+	writeFile(t, dir, "bad.yaml", `{{{invalid`)
+
+	mainPath := writeFile(t, dir, "main.yaml", `
+account_id: "123"
+mode: additive
+includes:
+  - bad.yaml
+users:
+  - email: alice@example.com
+    account_access: user
+`)
+
+	_, err := config.Load(mainPath)
+	if err == nil {
+		t.Fatal("expected error for invalid include, got nil")
+	}
+}
