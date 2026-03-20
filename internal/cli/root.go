@@ -62,6 +62,7 @@ func NewRootCmd(version string, opts ...CmdOption) *cobra.Command {
 		newExportCmd(o),
 		newPlanCmd(o),
 		newApplyCmd(o),
+		newInitCmd(o),
 	)
 
 	return cmd
