@@ -33,10 +33,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Sign checksums with cosign
-        run: cosign sign-blob --yes --output-signature checksums.txt.sig --output-certificate checksums.txt.pem dist/checksums.txt
+        run: cosign sign-blob --yes --bundle checksums.txt.bundle dist/checksums.txt
 
       - name: Upload signatures to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
-        run: gh release upload "$TAG" dist/checksums.txt checksums.txt.sig checksums.txt.pem
+        run: gh release upload "$TAG" checksums.txt.bundle
