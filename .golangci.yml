@@ -49,3 +49,5 @@ linters:
           - goconst
           - gocognit
           - gocyclo
+          - gosec
+          - unparam

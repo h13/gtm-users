@@ -34,7 +34,7 @@ func newTestClient(t *testing.T, handler http.Handler) *Client {
 
 func jsonResponse(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v) //nolint:errcheck
+	json.NewEncoder(w).Encode(v) //nolint:errcheck,gosec
 }
 
 func TestNewClient_InvalidCredentials(t *testing.T) {
@@ -204,14 +204,15 @@ func TestFetchState_Pagination(t *testing.T) {
 	mux.HandleFunc("/tagmanager/v2/accounts/12345/user_permissions", func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 		pageToken := r.URL.Query().Get("pageToken")
-		if pageToken == "" {
+		switch pageToken {
+		case "":
 			jsonResponse(w, &tagmanager.ListUserPermissionsResponse{
 				UserPermission: []*tagmanager.UserPermission{
 					{EmailAddress: "alice@example.com", Path: "p/1", AccountAccess: &tagmanager.AccountAccess{Permission: "user"}},
 				},
 				NextPageToken: "page2",
 			})
-		} else if pageToken == "page2" {
+		case "page2":
 			jsonResponse(w, &tagmanager.ListUserPermissionsResponse{
 				UserPermission: []*tagmanager.UserPermission{
 					{EmailAddress: "bob@example.com", Path: "p/2", AccountAccess: &tagmanager.AccountAccess{Permission: "admin"}},
@@ -272,7 +273,7 @@ func TestCreateUserPermission_Success(t *testing.T) {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		json.NewDecoder(r.Body).Decode(&gotBody) //nolint:errcheck
+		json.NewDecoder(r.Body).Decode(&gotBody) //nolint:errcheck,gosec
 		jsonResponse(w, &tagmanager.UserPermission{
 			EmailAddress: "alice@example.com",
 			Path:         "accounts/12345/user_permissions/200",
