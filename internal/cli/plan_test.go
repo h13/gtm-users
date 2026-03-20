@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/h13/gtm-users/internal/state"
@@ -15,6 +17,8 @@ func newTestOpts(t *testing.T, mock *mockClient, configYAML string) *rootOptions
 		configPath:      path,
 		credentialsPath: "fake-creds.json",
 		format:          "text",
+		stdout:          &bytes.Buffer{},
+		stdin:           strings.NewReader("no\n"),
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return mock, nil
 		},
@@ -28,6 +32,8 @@ func newTestOptsWithClientErr(t *testing.T, configYAML string, clientErr error) 
 		configPath:      path,
 		credentialsPath: "fake-creds.json",
 		format:          "text",
+		stdout:          &bytes.Buffer{},
+		stdin:           strings.NewReader("no\n"),
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return nil, clientErr
 		},
@@ -66,6 +72,7 @@ func TestRunPlan_ConfigLoadError(t *testing.T) {
 	opts := &rootOptions{
 		configPath:      "/nonexistent.yaml",
 		credentialsPath: "fake.json",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return &mockClient{}, nil
 		},
@@ -92,6 +99,7 @@ func TestRunPlan_MissingCredentials(t *testing.T) {
 	opts := &rootOptions{
 		configPath:      path,
 		credentialsPath: "",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return &mockClient{}, nil
 		},

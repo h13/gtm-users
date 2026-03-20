@@ -64,11 +64,11 @@ func runApply(opts *rootOptions, autoApprove bool) error {
 	}
 
 	format := output.Format(opts.format)
-	if err := output.PrintPlan(os.Stdout, plan, format); err != nil {
+	if err := output.PrintPlan(opts.stdout, plan, format); err != nil {
 		return err
 	}
 
-	if !autoApprove && !confirmApply(os.Stdin) {
+	if !autoApprove && !confirmApply(opts.stdin) {
 		fmt.Println("Apply cancelled.")
 		return nil
 	}

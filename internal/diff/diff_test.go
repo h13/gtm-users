@@ -339,6 +339,38 @@ func TestCompute_NoChanges_JSONEmptyArray(t *testing.T) {
 	}
 }
 
+func TestCompute_AddUserWithContainers(t *testing.T) {
+	desired := state.AccountState{
+		AccountID: "123",
+		Users: []state.UserPermission{
+			{
+				Email:         "alice@example.com",
+				AccountAccess: "user",
+				ContainerAccess: []state.ContainerPermission{
+					{ContainerID: "GTM-AAAA1111", Permission: "read"},
+				},
+			},
+		},
+	}
+	actual := state.AccountState{AccountID: "123"}
+
+	plan := diff.Compute(desired, actual, config.ModeAdditive)
+
+	if !plan.HasChanges() {
+		t.Fatal("expected changes")
+	}
+	if plan.Changes[0].Action != diff.ActionAdd {
+		t.Errorf("action = %q, want add", plan.Changes[0].Action)
+	}
+	if len(plan.Changes[0].ContainerChanges) != 1 {
+		t.Fatalf("container changes = %d, want 1", len(plan.Changes[0].ContainerChanges))
+	}
+	cc := plan.Changes[0].ContainerChanges[0]
+	if cc.ContainerID != "GTM-AAAA1111" || cc.NewPermission != "read" || cc.Action != diff.ActionAdd {
+		t.Errorf("unexpected container change: %+v", cc)
+	}
+}
+
 func TestCompute_AddUserNoContainers(t *testing.T) {
 	desired := state.AccountState{
 		AccountID: "123",

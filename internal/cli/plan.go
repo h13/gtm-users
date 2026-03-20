@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/h13/gtm-users/internal/config"
 	"github.com/h13/gtm-users/internal/diff"
@@ -51,5 +50,5 @@ func runPlan(opts *rootOptions) error {
 	plan := diff.Compute(desired, actual, cfg.Mode)
 
 	format := output.Format(opts.format)
-	return output.PrintPlan(os.Stdout, plan, format)
+	return output.PrintPlan(opts.stdout, plan, format)
 }

@@ -16,21 +16,16 @@ type errWriter struct{ err error }
 
 func (w *errWriter) Write([]byte) (int, error) { return 0, w.err }
 
-// limitedWriter fails after writing n bytes.
-type limitedWriter struct {
+// callCountWriter fails after n successful Write calls.
+type callCountWriter struct {
 	remaining int
 }
 
-func (w *limitedWriter) Write(p []byte) (int, error) {
+func (w *callCountWriter) Write(p []byte) (int, error) {
 	if w.remaining <= 0 {
 		return 0, errors.New("write limit exceeded")
 	}
-	if len(p) > w.remaining {
-		n := w.remaining
-		w.remaining = 0
-		return n, errors.New("write limit exceeded")
-	}
-	w.remaining -= len(p)
+	w.remaining--
 	return len(p), nil
 }
 
@@ -390,8 +385,8 @@ func TestPrintText_SummaryWriteError(t *testing.T) {
 		},
 	}
 
-	// Allow summary line to be written, but fail on user change
-	w := &limitedWriter{remaining: 50}
+	// Allow summary line (call 1), fail on user change (call 2)
+	w := &callCountWriter{remaining: 1}
 	err := output.PrintPlan(w, plan, output.FormatText)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -409,8 +404,8 @@ func TestPrintExport_UserWriteError(t *testing.T) {
 		},
 	}
 
-	// Allow header to be written, fail on user
-	w := &limitedWriter{remaining: 40}
+	// Allow header (call 1), fail on user email line (call 2)
+	w := &callCountWriter{remaining: 1}
 	err := output.PrintExport(w, "123", users)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -428,8 +423,8 @@ func TestWriteExportUser_ContainerHeaderError(t *testing.T) {
 		},
 	}
 
-	// Allow header + email line, fail on container_access header
-	w := &limitedWriter{remaining: 80}
+	// Allow header (call 1) + email line (call 2), fail on container_access header (call 3)
+	w := &callCountWriter{remaining: 2}
 	err := output.PrintExport(w, "123", users)
 	if err == nil {
 		t.Fatal("expected error, got nil")
@@ -447,8 +442,8 @@ func TestWriteExportUser_ContainerDetailError(t *testing.T) {
 		},
 	}
 
-	// Allow header + email + container_access header, fail on container detail
-	w := &limitedWriter{remaining: 120}
+	// Allow header (1) + email (2) + container_access header (3), fail on container detail (4)
+	w := &callCountWriter{remaining: 3}
 	err := output.PrintExport(w, "123", users)
 	if err == nil {
 		t.Fatal("expected error, got nil")

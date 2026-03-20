@@ -3,7 +3,6 @@ package cli
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/h13/gtm-users/internal/output"
 	"github.com/spf13/cobra"
@@ -57,5 +56,5 @@ func runExport(opts *rootOptions, accountID string) error {
 		})
 	}
 
-	return output.PrintExport(os.Stdout, accountID, users)
+	return output.PrintExport(opts.stdout, accountID, users)
 }

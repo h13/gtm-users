@@ -1,0 +1,8 @@
+ignore:
+  - "cmd/gtm-users/main.go"
+
+coverage:
+  status:
+    project:
+      default:
+        target: 100%
