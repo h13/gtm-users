@@ -24,6 +24,14 @@ Declarative Google Tag Manager permission management — plan, review, apply.
 
 ## Install
 
+### Homebrew
+
+```sh
+brew install h13/tap/gtm-users
+```
+
+### Go
+
 ```sh
 go install github.com/h13/gtm-users/cmd/gtm-users@latest
 ```

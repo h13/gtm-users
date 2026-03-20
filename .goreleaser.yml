@@ -25,6 +25,18 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+brews:
+  - repository:
+      owner: h13
+      name: homebrew-tap
+    homepage: https://github.com/h13/gtm-users
+    description: Declarative Google Tag Manager permission management CLI
+    license: MIT
+    install: |
+      bin.install "gtm-users"
+    test: |
+      system bin/"gtm-users", "--version"
+
 changelog:
   sort: asc
   filters:
