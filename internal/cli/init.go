@@ -68,7 +68,11 @@ func runInit(opts *rootOptions, accountID string) error {
 	if err != nil {
 		return fmt.Errorf("creating config file: %w", err)
 	}
-	defer f.Close()
 
-	return output.PrintExport(f, accountID, users)
+	if err := output.PrintExport(f, accountID, users); err != nil {
+		_ = f.Close()
+		return err
+	}
+
+	return f.Close()
 }

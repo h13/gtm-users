@@ -150,6 +150,26 @@ func TestRunInit_ClientError(t *testing.T) {
 	}
 }
 
+func TestRunInit_CreateFileError(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123"},
+	}
+
+	opts := &rootOptions{
+		configPath:      "/nonexistent-dir/subdir/gtm-users.yaml",
+		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
+		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
+			return mock, nil
+		},
+	}
+
+	err := runInit(opts, "123")
+	if err == nil {
+		t.Fatal("expected error for invalid path, got nil")
+	}
+}
+
 func TestNewInitCmd(t *testing.T) {
 	opts := &rootOptions{}
 	cmd := newInitCmd(opts)
