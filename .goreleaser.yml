@@ -29,6 +29,7 @@ brews:
   - repository:
       owner: h13
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: https://github.com/h13/gtm-users
     description: Declarative Google Tag Manager permission management CLI
     license: MIT
