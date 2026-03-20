@@ -60,6 +60,7 @@ type User struct {
 
 // Config is the top-level YAML configuration.
 type Config struct {
+	Includes  []string        `yaml:"includes,omitempty"`
 	AccountID string          `yaml:"account_id"`
 	Mode      Mode            `yaml:"mode"`
 	Roles     map[string]Role `yaml:"roles,omitempty"`
@@ -67,7 +68,7 @@ type Config struct {
 	Users     []User          `yaml:"users"`
 }
 
-// Load reads and parses a YAML config file.
+// Load reads and parses a YAML config file, processing any includes.
 func Load(path string) (Config, error) {
 	cleaned := filepath.Clean(path)
 	data, err := os.ReadFile(cleaned)
@@ -75,12 +76,52 @@ func Load(path string) (Config, error) {
 		return Config{}, fmt.Errorf("reading config file: %w", err)
 	}
 
-	return Parse(data)
+	cfg, err := parseRaw(data)
+	if err != nil {
+		return Config{}, err
+	}
+
+	// Process includes.
+	baseDir := filepath.Dir(cleaned)
+	for _, inc := range cfg.Includes {
+		incPath := filepath.Join(baseDir, inc)
+		incData, err := os.ReadFile(filepath.Clean(incPath))
+		if err != nil {
+			return Config{}, fmt.Errorf("reading include file %s: %w", inc, err)
+		}
+		incCfg, err := parseRaw(incData)
+		if err != nil {
+			return Config{}, fmt.Errorf("parsing include file %s: %w", inc, err)
+		}
+		cfg = MergeConfigs(cfg, incCfg)
+	}
+
+	resolved, err := ResolveRoles(cfg)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return resolved, nil
 }
 
 // Parse parses YAML bytes into a Config.
 // Unknown fields in the YAML are rejected to catch typos early.
 func Parse(data []byte) (Config, error) {
+	cfg, err := parseRaw(data)
+	if err != nil {
+		return Config{}, err
+	}
+
+	resolved, err := ResolveRoles(cfg)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return resolved, nil
+}
+
+// parseRaw parses YAML bytes into a Config without resolving roles.
+func parseRaw(data []byte) (Config, error) {
 	var cfg Config
 
 	dec := yaml.NewDecoder(bytes.NewReader(data))
@@ -94,12 +135,7 @@ func Parse(data []byte) (Config, error) {
 		cfg.Mode = ModeAdditive
 	}
 
-	resolved, err := ResolveRoles(cfg)
-	if err != nil {
-		return Config{}, err
-	}
-
-	return resolved, nil
+	return cfg, nil
 }
 
 // ResolveRoles expands role references in users.
