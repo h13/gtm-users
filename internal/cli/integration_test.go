@@ -45,6 +45,7 @@ func newTestRootCmd(t *testing.T, mock *mockClient, configYAML string) (*bytes.B
 		newInitCmd(opts),
 		newDriftCmd(opts),
 		newCompletionCmd(),
+		newMatrixCmd(opts),
 	)
 
 	var stdout bytes.Buffer

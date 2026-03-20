@@ -65,6 +65,7 @@ func NewRootCmd(version string, opts ...CmdOption) *cobra.Command {
 		newInitCmd(o),
 		newDriftCmd(o),
 		newCompletionCmd(),
+		newMatrixCmd(o),
 	)
 
 	return cmd
