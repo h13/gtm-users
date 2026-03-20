@@ -1,0 +1,24 @@
+# Example workflow: drift detection via cron.
+# Copy this file to your repository and adjust as needed.
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: "0 8 * * 1-5" # weekdays at 08:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run drift detection
+        uses: h13/gtm-users@main
+        with:
+          command: drift
+          credentials: ${{ secrets.GTM_CREDENTIALS }}
+          config: gtm-users.yaml

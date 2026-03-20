@@ -64,7 +64,7 @@ func runApply(opts *rootOptions, autoApprove bool) error {
 	}
 
 	format := output.Format(opts.format)
-	if err := output.PrintPlan(opts.stdout, plan, format); err != nil {
+	if err := output.PrintPlan(opts.stdout, plan, format, !opts.noColor); err != nil {
 		return err
 	}
 

@@ -25,7 +25,7 @@ func TestNewRootCmd_Structure(t *testing.T) {
 		subcommands[sub.Name()] = true
 	}
 
-	for _, name := range []string{"validate", "plan", "apply", "export"} {
+	for _, name := range []string{"validate", "plan", "apply", "export", "init", "drift"} {
 		if !subcommands[name] {
 			t.Errorf("missing subcommand %q", name)
 		}
@@ -42,6 +42,7 @@ func TestNewRootCmd_PersistentFlags(t *testing.T) {
 		{"config", "gtm-users.yaml"},
 		{"credentials", ""},
 		{"format", "text"},
+		{"no-color", "false"},
 	}
 
 	for _, tt := range tests {

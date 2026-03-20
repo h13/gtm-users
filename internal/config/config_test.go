@@ -273,3 +273,136 @@ func TestValidate_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_WithRoles(t *testing.T) {
+	data := []byte(`
+account_id: "123"
+mode: additive
+roles:
+  viewer:
+    account_access: user
+    container_access:
+      - container_id: "GTM-AAAA1111"
+        permission: read
+users:
+  - email: alice@example.com
+    role: viewer
+`)
+
+	cfg, err := config.Parse(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Users[0].AccountAccess != config.AccountAccessUser {
+		t.Errorf("account_access = %q, want %q", cfg.Users[0].AccountAccess, config.AccountAccessUser)
+	}
+	if len(cfg.Users[0].ContainerAccess) != 1 {
+		t.Fatalf("container_access len = %d, want 1", len(cfg.Users[0].ContainerAccess))
+	}
+	if cfg.Users[0].ContainerAccess[0].Permission != config.PermissionRead {
+		t.Errorf("permission = %q, want %q", cfg.Users[0].ContainerAccess[0].Permission, config.PermissionRead)
+	}
+}
+
+func TestParse_RoleOverride(t *testing.T) {
+	data := []byte(`
+account_id: "123"
+mode: additive
+roles:
+  viewer:
+    account_access: user
+    container_access:
+      - container_id: "GTM-AAAA1111"
+        permission: read
+users:
+  - email: alice@example.com
+    role: viewer
+    account_access: admin
+    container_access:
+      - container_id: "GTM-BBBB2222"
+        permission: publish
+`)
+
+	cfg, err := config.Parse(data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if cfg.Users[0].AccountAccess != config.AccountAccessAdmin {
+		t.Errorf("account_access = %q, want %q (override)", cfg.Users[0].AccountAccess, config.AccountAccessAdmin)
+	}
+	if len(cfg.Users[0].ContainerAccess) != 1 {
+		t.Fatalf("container_access len = %d, want 1", len(cfg.Users[0].ContainerAccess))
+	}
+	if cfg.Users[0].ContainerAccess[0].ContainerID != "GTM-BBBB2222" {
+		t.Errorf("container_id = %q, want GTM-BBBB2222 (override)", cfg.Users[0].ContainerAccess[0].ContainerID)
+	}
+}
+
+func TestParse_UndefinedRole(t *testing.T) {
+	data := []byte(`
+account_id: "123"
+mode: additive
+roles:
+  viewer:
+    account_access: user
+users:
+  - email: alice@example.com
+    role: editor
+`)
+
+	_, err := config.Parse(data)
+	if err == nil {
+		t.Fatal("expected error for undefined role, got nil")
+	}
+}
+
+func TestResolveRoles_NoRoles(t *testing.T) {
+	cfg := config.Config{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Users: []config.User{
+			{Email: "a@b.com", AccountAccess: config.AccountAccessUser},
+		},
+	}
+
+	resolved, err := config.ResolveRoles(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(resolved.Users) != 1 {
+		t.Errorf("users len = %d, want 1", len(resolved.Users))
+	}
+}
+
+func TestResolveRoles_RolePlusInline(t *testing.T) {
+	cfg := config.Config{
+		AccountID: "123",
+		Mode:      config.ModeAdditive,
+		Roles: map[string]config.Role{
+			"viewer": {
+				AccountAccess: config.AccountAccessUser,
+				ContainerAccess: []config.ContainerAccess{
+					{ContainerID: "GTM-AAAA1111", Permission: config.PermissionRead},
+				},
+			},
+		},
+		Users: []config.User{
+			{Email: "a@b.com", Role: "viewer"},
+			{Email: "b@c.com", AccountAccess: config.AccountAccessAdmin},
+		},
+	}
+
+	resolved, err := config.ResolveRoles(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if resolved.Users[0].AccountAccess != config.AccountAccessUser {
+		t.Errorf("users[0].account_access = %q, want user", resolved.Users[0].AccountAccess)
+	}
+	if resolved.Users[1].AccountAccess != config.AccountAccessAdmin {
+		t.Errorf("users[1].account_access = %q, want admin", resolved.Users[1].AccountAccess)
+	}
+}

@@ -18,18 +18,19 @@ const (
 )
 
 // PrintPlan writes the plan to the writer in the specified format.
-func PrintPlan(w io.Writer, plan diff.Plan, format Format) error {
+// When color is true, text output includes ANSI color codes.
+func PrintPlan(w io.Writer, plan diff.Plan, format Format, color bool) error {
 	switch format {
 	case FormatJSON:
 		return printJSON(w, plan)
 	case FormatText:
-		return printText(w, plan)
+		return printText(w, plan, color)
 	default:
-		return printText(w, plan)
+		return printText(w, plan, color)
 	}
 }
 
-func printText(w io.Writer, plan diff.Plan) error {
+func printText(w io.Writer, plan diff.Plan, color bool) error {
 	if !plan.HasChanges() {
 		_, err := fmt.Fprintln(w, "No changes. Infrastructure is up-to-date.")
 		return err
@@ -41,7 +42,7 @@ func printText(w io.Writer, plan diff.Plan) error {
 	}
 
 	for _, change := range plan.Changes {
-		if err := printUserChange(w, change); err != nil {
+		if err := printUserChange(w, change, color); err != nil {
 			return err
 		}
 	}
@@ -49,7 +50,7 @@ func printText(w io.Writer, plan diff.Plan) error {
 	return nil
 }
 
-func printUserChange(w io.Writer, change diff.UserChange) error {
+func printUserChange(w io.Writer, change diff.UserChange, color bool) error {
 	symbol := actionSymbol(change.Action)
 	var lines []string
 
@@ -75,7 +76,12 @@ func printUserChange(w io.Writer, change diff.UserChange) error {
 		lines = append(lines, fmt.Sprintf("    account_access: %s", change.OldAccountAccess))
 	}
 
-	if _, err := fmt.Fprintln(w, strings.Join(lines, "\n")); err != nil {
+	text := strings.Join(lines, "\n")
+	if color {
+		text = Colorize(ColorForAction(change.Action), text)
+	}
+
+	if _, err := fmt.Fprintln(w, text); err != nil {
 		return err
 	}
 	_, err := fmt.Fprintln(w)

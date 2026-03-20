@@ -44,18 +44,27 @@ type ContainerAccess struct {
 	Permission  ContainerPermission `yaml:"permission"`
 }
 
+// Role defines a reusable permission template.
+type Role struct {
+	AccountAccess   AccountAccess     `yaml:"account_access"`
+	ContainerAccess []ContainerAccess `yaml:"container_access,omitempty"`
+}
+
 // User represents a GTM user's desired permission state.
 type User struct {
 	Email           string            `yaml:"email"`
-	AccountAccess   AccountAccess     `yaml:"account_access"`
+	Role            string            `yaml:"role,omitempty"`
+	AccountAccess   AccountAccess     `yaml:"account_access,omitempty"`
 	ContainerAccess []ContainerAccess `yaml:"container_access,omitempty"`
 }
 
 // Config is the top-level YAML configuration.
 type Config struct {
-	AccountID string `yaml:"account_id"`
-	Mode      Mode   `yaml:"mode"`
-	Users     []User `yaml:"users"`
+	AccountID string          `yaml:"account_id"`
+	Mode      Mode            `yaml:"mode"`
+	Roles     map[string]Role `yaml:"roles,omitempty"`
+	Policy    *Policy         `yaml:"policy,omitempty"`
+	Users     []User          `yaml:"users"`
 }
 
 // Load reads and parses a YAML config file.
@@ -85,7 +94,57 @@ func Parse(data []byte) (Config, error) {
 		cfg.Mode = ModeAdditive
 	}
 
-	return cfg, nil
+	resolved, err := ResolveRoles(cfg)
+	if err != nil {
+		return Config{}, err
+	}
+
+	return resolved, nil
+}
+
+// ResolveRoles expands role references in users.
+// For each user with a role, the role's permissions are copied.
+// User-level fields override role fields when both are specified.
+func ResolveRoles(cfg Config) (Config, error) {
+	if len(cfg.Roles) == 0 {
+		return cfg, nil
+	}
+
+	resolved := make([]User, 0, len(cfg.Users))
+	for i, u := range cfg.Users {
+		if u.Role == "" {
+			resolved = append(resolved, u)
+			continue
+		}
+
+		role, ok := cfg.Roles[u.Role]
+		if !ok {
+			return Config{}, fmt.Errorf("users[%d]: undefined role %q", i, u.Role)
+		}
+
+		newUser := User{
+			Email:           u.Email,
+			AccountAccess:   role.AccountAccess,
+			ContainerAccess: role.ContainerAccess,
+		}
+
+		// User-level overrides.
+		if u.AccountAccess != "" {
+			newUser.AccountAccess = u.AccountAccess
+		}
+		if len(u.ContainerAccess) > 0 {
+			newUser.ContainerAccess = u.ContainerAccess
+		}
+
+		resolved = append(resolved, newUser)
+	}
+
+	return Config{
+		AccountID: cfg.AccountID,
+		Mode:      cfg.Mode,
+		Roles:     cfg.Roles,
+		Users:     resolved,
+	}, nil
 }
 
 var (
@@ -126,6 +185,8 @@ func Validate(cfg Config) []ValidationError {
 	for i, u := range cfg.Users {
 		errs = validateUser(errs, u, i, seen)
 	}
+
+	errs = append(errs, ValidatePolicy(cfg)...)
 
 	return errs
 }

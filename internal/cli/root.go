@@ -13,6 +13,7 @@ type rootOptions struct {
 	configPath      string
 	credentialsPath string
 	format          string
+	noColor         bool
 	newClient       func(ctx context.Context, accountID, credentialsPath string) (gtmClient, error)
 	stdout          io.Writer
 	stdin           io.Reader
@@ -54,12 +55,15 @@ func NewRootCmd(version string, opts ...CmdOption) *cobra.Command {
 	cmd.PersistentFlags().StringVar(&o.configPath, "config", "gtm-users.yaml", "path to config file")
 	cmd.PersistentFlags().StringVar(&o.credentialsPath, "credentials", "", "path to GCP service account credentials JSON")
 	cmd.PersistentFlags().StringVar(&o.format, "format", "text", "output format (text|json)")
+	cmd.PersistentFlags().BoolVar(&o.noColor, "no-color", false, "disable colored output")
 
 	cmd.AddCommand(
 		newValidateCmd(o),
 		newExportCmd(o),
 		newPlanCmd(o),
 		newApplyCmd(o),
+		newInitCmd(o),
+		newDriftCmd(o),
 	)
 
 	return cmd

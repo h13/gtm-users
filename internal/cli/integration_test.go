@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -34,12 +35,15 @@ func newTestRootCmd(t *testing.T, mock *mockClient, configYAML string) (*bytes.B
 	cmd.PersistentFlags().StringVar(&opts.configPath, "config", path, "path to config file")
 	cmd.PersistentFlags().StringVar(&opts.credentialsPath, "credentials", "fake-creds.json", "credentials")
 	cmd.PersistentFlags().StringVar(&opts.format, "format", "text", "output format")
+	cmd.PersistentFlags().BoolVar(&opts.noColor, "no-color", false, "disable colored output")
 
 	cmd.AddCommand(
 		newValidateCmd(opts),
 		newExportCmd(opts),
 		newPlanCmd(opts),
 		newApplyCmd(opts),
+		newInitCmd(opts),
+		newDriftCmd(opts),
 	)
 
 	var stdout bytes.Buffer
@@ -114,6 +118,58 @@ func TestIntegration_ExportCommand(t *testing.T) {
 
 	if err := run("export", "--account-id", "123"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIntegration_InitCommand(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123",
+			Users: []state.UserPermission{
+				{Email: "alice@example.com", AccountAccess: "user"},
+			},
+		},
+	}
+	_, run := newTestRootCmd(t, mock, validConfig)
+
+	// Override config path to a non-existent file in temp dir
+	outPath := filepath.Join(t.TempDir(), "init-output.yaml")
+	if err := run("init", "--account-id", "123", "--config", outPath); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIntegration_DriftCommand_NoDrift(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{
+			AccountID: "123456789",
+			Users: []state.UserPermission{
+				{
+					Email:         "alice@example.com",
+					AccountAccess: "user",
+					ContainerAccess: []state.ContainerPermission{
+						{ContainerID: "GTM-AAAA1111", Permission: "publish"},
+					},
+				},
+			},
+		},
+	}
+	_, run := newTestRootCmd(t, mock, validConfig)
+
+	if err := run("drift"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestIntegration_DriftCommand_DriftDetected(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123456789"},
+	}
+	_, run := newTestRootCmd(t, mock, validConfig)
+
+	err := run("drift")
+	if err == nil {
+		t.Fatal("expected drift error, got nil")
 	}
 }
 

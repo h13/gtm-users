@@ -11,17 +11,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newPlanCmd(opts *rootOptions) *cobra.Command {
+// DriftDetectedError signals that drift was found (exit code 2).
+type DriftDetectedError struct{}
+
+func (DriftDetectedError) Error() string {
+	return "drift detected"
+}
+
+func newDriftCmd(opts *rootOptions) *cobra.Command {
 	return &cobra.Command{
-		Use:   "plan",
-		Short: "Show the execution plan (what would change)",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runPlan(opts)
+		Use:   "drift",
+		Short: "Detect configuration drift (exit code 2 if drift found)",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runDrift(opts)
 		},
 	}
 }
 
-func runPlan(opts *rootOptions) error {
+func runDrift(opts *rootOptions) error {
 	cfg, err := config.Load(opts.configPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
@@ -32,7 +39,7 @@ func runPlan(opts *rootOptions) error {
 	}
 
 	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for plan")
+		return fmt.Errorf("--credentials flag is required for drift")
 	}
 
 	ctx := context.Background()
@@ -49,6 +56,15 @@ func runPlan(opts *rootOptions) error {
 	desired := state.FromConfig(cfg)
 	plan := diff.Compute(desired, actual, cfg.Mode)
 
+	if !plan.HasChanges() {
+		_, err := fmt.Fprintln(opts.stdout, "No drift detected.")
+		return err
+	}
+
 	format := output.Format(opts.format)
-	return output.PrintPlan(opts.stdout, plan, format, !opts.noColor)
+	if err := output.PrintPlan(opts.stdout, plan, format, !opts.noColor); err != nil {
+		return err
+	}
+
+	return DriftDetectedError{}
 }
