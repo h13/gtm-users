@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"strings"
@@ -10,6 +11,10 @@ import (
 	"github.com/h13/gtm-users/internal/diff"
 	"github.com/h13/gtm-users/internal/state"
 )
+
+type errWriter struct{ err error }
+
+func (w *errWriter) Write([]byte) (int, error) { return 0, w.err }
 
 type mockClient struct {
 	createCalls []state.UserPermission
@@ -208,6 +213,30 @@ func TestRunApply_AutoApproveSuccess(t *testing.T) {
 	}
 }
 
+func TestRunApply_ConfirmYes(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123456789"},
+	}
+	opts := newTestOpts(t, mock, validConfig)
+	opts.stdin = strings.NewReader("yes\n")
+
+	if err := runApply(opts, false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunApply_ConfirmNo(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123456789"},
+	}
+	opts := newTestOpts(t, mock, validConfig)
+	opts.stdin = strings.NewReader("no\n")
+
+	if err := runApply(opts, false); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestRunApply_NoChanges(t *testing.T) {
 	mock := &mockClient{
 		fetchState: state.AccountState{
@@ -234,6 +263,8 @@ func TestRunApply_ConfigLoadError(t *testing.T) {
 	opts := &rootOptions{
 		configPath:      "/nonexistent.yaml",
 		credentialsPath: "fake.json",
+		stdout:          &bytes.Buffer{},
+		stdin:           strings.NewReader("no\n"),
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return &mockClient{}, nil
 		},
@@ -260,6 +291,8 @@ func TestRunApply_MissingCredentials(t *testing.T) {
 	opts := &rootOptions{
 		configPath:      path,
 		credentialsPath: "",
+		stdout:          &bytes.Buffer{},
+		stdin:           strings.NewReader("no\n"),
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return &mockClient{}, nil
 		},
@@ -315,6 +348,19 @@ func TestConfirmApply(t *testing.T) {
 				t.Errorf("confirmApply(%q) = %v, want %v", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestRunApply_PrintPlanError(t *testing.T) {
+	mock := &mockClient{
+		fetchState: state.AccountState{AccountID: "123456789"},
+	}
+	opts := newTestOpts(t, mock, validConfig)
+	opts.stdout = &errWriter{err: errors.New("write error")}
+
+	err := runApply(opts, true)
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }
 

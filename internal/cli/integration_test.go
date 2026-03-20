@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/h13/gtm-users/internal/state"
@@ -17,6 +18,8 @@ func newTestRootCmd(t *testing.T, mock *mockClient, configYAML string) (*bytes.B
 		configPath:      path,
 		credentialsPath: "fake-creds.json",
 		format:          "text",
+		stdout:          &bytes.Buffer{},
+		stdin:           strings.NewReader("yes\n"),
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return mock, nil
 		},

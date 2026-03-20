@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"testing"
@@ -25,6 +26,7 @@ func TestRunExport_Success(t *testing.T) {
 	}
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return mock, nil
 		},
@@ -46,6 +48,7 @@ func TestRunExport_NoContainers(t *testing.T) {
 	}
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return mock, nil
 		},
@@ -59,6 +62,7 @@ func TestRunExport_NoContainers(t *testing.T) {
 func TestRunExport_MissingCredentials(t *testing.T) {
 	opts := &rootOptions{
 		credentialsPath: "",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return &mockClient{}, nil
 		},
@@ -73,6 +77,7 @@ func TestRunExport_MissingCredentials(t *testing.T) {
 func TestRunExport_ClientError(t *testing.T) {
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return nil, errors.New("auth failed")
 		},
@@ -90,6 +95,7 @@ func TestRunExport_FetchStateError(t *testing.T) {
 	}
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",
+		stdout:          &bytes.Buffer{},
 		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
 			return mock, nil
 		},

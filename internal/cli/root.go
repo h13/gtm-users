@@ -2,6 +2,8 @@ package cli
 
 import (
 	"context"
+	"io"
+	"os"
 
 	"github.com/h13/gtm-users/internal/gtm"
 	"github.com/spf13/cobra"
@@ -12,12 +14,32 @@ type rootOptions struct {
 	credentialsPath string
 	format          string
 	newClient       func(ctx context.Context, accountID, credentialsPath string) (gtmClient, error)
+	stdout          io.Writer
+	stdin           io.Reader
 }
 
-func NewRootCmd(version string) *cobra.Command {
-	opts := &rootOptions{}
-	opts.newClient = func(ctx context.Context, accountID, credentialsPath string) (gtmClient, error) {
-		return gtm.NewClient(ctx, accountID, credentialsPath)
+// CmdOption configures the root command.
+type CmdOption func(*rootOptions)
+
+// WithGTMOptions passes options to the GTM client constructor.
+func WithGTMOptions(opts ...gtm.Option) CmdOption {
+	return func(o *rootOptions) {
+		o.newClient = func(ctx context.Context, accountID, credentialsPath string) (gtmClient, error) {
+			return gtm.NewClient(ctx, accountID, credentialsPath, opts...)
+		}
+	}
+}
+
+func NewRootCmd(version string, opts ...CmdOption) *cobra.Command {
+	o := &rootOptions{
+		stdout: os.Stdout,
+		stdin:  os.Stdin,
+		newClient: func(ctx context.Context, accountID, credentialsPath string) (gtmClient, error) {
+			return gtm.NewClient(ctx, accountID, credentialsPath)
+		},
+	}
+	for _, opt := range opts {
+		opt(o)
 	}
 
 	cmd := &cobra.Command{
@@ -29,15 +51,15 @@ func NewRootCmd(version string) *cobra.Command {
 		SilenceUsage:  true,
 	}
 
-	cmd.PersistentFlags().StringVar(&opts.configPath, "config", "gtm-users.yaml", "path to config file")
-	cmd.PersistentFlags().StringVar(&opts.credentialsPath, "credentials", "", "path to GCP service account credentials JSON")
-	cmd.PersistentFlags().StringVar(&opts.format, "format", "text", "output format (text|json)")
+	cmd.PersistentFlags().StringVar(&o.configPath, "config", "gtm-users.yaml", "path to config file")
+	cmd.PersistentFlags().StringVar(&o.credentialsPath, "credentials", "", "path to GCP service account credentials JSON")
+	cmd.PersistentFlags().StringVar(&o.format, "format", "text", "output format (text|json)")
 
 	cmd.AddCommand(
-		newValidateCmd(opts),
-		newExportCmd(opts),
-		newPlanCmd(opts),
-		newApplyCmd(opts),
+		newValidateCmd(o),
+		newExportCmd(o),
+		newPlanCmd(o),
+		newApplyCmd(o),
 	)
 
 	return cmd

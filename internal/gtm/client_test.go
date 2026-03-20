@@ -18,18 +18,18 @@ func newTestClient(t *testing.T, handler http.Handler) *Client {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	svc, err := tagmanager.NewService(context.Background(),
-		option.WithHTTPClient(srv.Client()),
-		option.WithEndpoint(srv.URL),
+	client, err := NewClient(context.Background(), "12345", "",
+		WithAPIOptions(
+			option.WithHTTPClient(srv.Client()),
+			option.WithEndpoint(srv.URL),
+			option.WithoutAuthentication(),
+		),
 	)
 	if err != nil {
-		t.Fatalf("creating test service: %v", err)
+		t.Fatalf("creating test client: %v", err)
 	}
 
-	return &Client{
-		svc:       svc,
-		accountID: "12345",
-	}
+	return client
 }
 
 func jsonResponse(w http.ResponseWriter, v interface{}) {
