@@ -31,10 +31,6 @@ func runPlan(opts *rootOptions) error {
 		return err
 	}
 
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for plan")
-	}
-
 	ctx := context.Background()
 	client, err := opts.newClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {

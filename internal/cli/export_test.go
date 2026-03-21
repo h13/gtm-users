@@ -59,21 +59,6 @@ func TestRunExport_NoContainers(t *testing.T) {
 	}
 }
 
-func TestRunExport_MissingCredentials(t *testing.T) {
-	opts := &rootOptions{
-		credentialsPath: "",
-		stdout:          &bytes.Buffer{},
-		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	err := runExport(opts, "123")
-	if err == nil {
-		t.Fatal("expected error for missing credentials, got nil")
-	}
-}
-
 func TestRunExport_ClientError(t *testing.T) {
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",

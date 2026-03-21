@@ -38,10 +38,6 @@ func runDrift(opts *rootOptions) error {
 		return err
 	}
 
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for drift")
-	}
-
 	ctx := context.Background()
 	client, err := opts.newClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {

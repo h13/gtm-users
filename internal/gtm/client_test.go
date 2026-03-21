@@ -43,19 +43,7 @@ func TestNewClient_ADC(t *testing.T) {
 		jsonResponse(w, &tagmanager.ListUserPermissionsResponse{})
 	})
 
-	srv := httptest.NewServer(mux)
-	t.Cleanup(srv.Close)
-
-	client, err := NewClient(context.Background(), "12345", "",
-		WithAPIOptions(
-			option.WithHTTPClient(srv.Client()),
-			option.WithEndpoint(srv.URL),
-			option.WithoutAuthentication(),
-		),
-	)
-	if err != nil {
-		t.Fatalf("NewClient with empty credentials (ADC) should succeed: %v", err)
-	}
+	client := newTestClient(t, mux)
 
 	// Verify the client is functional — scopes must be set even without credentials file.
 	st, err := client.FetchState(context.Background())

@@ -94,23 +94,6 @@ func TestRunPlan_ValidationError(t *testing.T) {
 	}
 }
 
-func TestRunPlan_MissingCredentials(t *testing.T) {
-	path := writeTempConfig(t, validConfig)
-	opts := &rootOptions{
-		configPath:      path,
-		credentialsPath: "",
-		stdout:          &bytes.Buffer{},
-		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	err := runPlan(opts)
-	if err == nil {
-		t.Fatal("expected error for missing credentials, got nil")
-	}
-}
-
 func TestRunPlan_ClientError(t *testing.T) {
 	opts := newTestOptsWithClientErr(t, validConfig, errors.New("auth failed"))
 

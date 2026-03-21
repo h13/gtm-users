@@ -86,28 +86,6 @@ func TestRunInit_FileAlreadyExists(t *testing.T) {
 	}
 }
 
-func TestRunInit_MissingCredentials(t *testing.T) {
-	dir := t.TempDir()
-	configPath := filepath.Join(dir, "gtm-users.yaml")
-
-	opts := &rootOptions{
-		configPath:      configPath,
-		credentialsPath: "",
-		stdout:          &bytes.Buffer{},
-		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	err := runInit(opts, "123")
-	if err == nil {
-		t.Fatal("expected error for missing credentials, got nil")
-	}
-	if !strings.Contains(err.Error(), "credentials") {
-		t.Errorf("error = %q, want credentials message", err.Error())
-	}
-}
-
 func TestRunInit_FetchStateError(t *testing.T) {
 	mock := &mockClient{
 		fetchErr: errors.New("API error"),

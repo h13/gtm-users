@@ -30,10 +30,6 @@ func newBackupCmd(opts *rootOptions) *cobra.Command {
 }
 
 func runBackup(opts *rootOptions, accountID, outputPath string) error {
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for backup")
-	}
-
 	if outputPath == "" {
 		outputPath = fmt.Sprintf("backup-%s.yaml", time.Now().Format("20060102-150405"))
 	}

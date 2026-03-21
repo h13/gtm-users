@@ -40,10 +40,6 @@ func runApply(opts *rootOptions, autoApprove bool) error {
 		return err
 	}
 
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for apply")
-	}
-
 	ctx := context.Background()
 	client, err := opts.newClient(ctx, cfg.AccountID, opts.credentialsPath)
 	if err != nil {

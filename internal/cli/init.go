@@ -33,10 +33,6 @@ func runInit(opts *rootOptions, accountID string) error {
 		return fmt.Errorf("config file already exists: %s", outPath)
 	}
 
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for init")
-	}
-
 	ctx := context.Background()
 	client, err := opts.newClient(ctx, accountID, opts.credentialsPath)
 	if err != nil {
