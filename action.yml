@@ -15,7 +15,10 @@ inputs:
     required: false
     default: "gtm-users.yaml"
   credentials:
-    description: "GCP service account credentials JSON content"
+    description: >-
+      GCP service account credentials JSON content.
+      Optional when using Workload Identity Federation (WIF) or other
+      Application Default Credentials (ADC) — e.g. via google-github-actions/auth.
     required: false
   format:
     description: "Output format (text, json)"

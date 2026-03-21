@@ -302,11 +302,23 @@ apply:
 
 ## Authentication
 
+### Service account credentials file
+
 Provide a GCP service account credentials JSON file via the `--credentials` flag.
 The service account requires the `Tag Manager - Manage Users` scope.
 
 When using the GitHub Action, pass the JSON content directly via the `credentials` input
 (typically stored as a [GitHub secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions)).
+
+### Application Default Credentials (ADC)
+
+When `--credentials` is omitted, the tool falls back to
+[Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials).
+This enables keyless authentication via Workload Identity Federation (WIF) on
+GitHub Actions, GitLab CI, Cloud Build, and other CI/CD platforms.
+
+For GitHub Actions, use [`google-github-actions/auth`](https://github.com/google-github-actions/auth)
+to configure WIF before running gtm-users without the `credentials` input.
 
 ## License
 

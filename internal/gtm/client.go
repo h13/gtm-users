@@ -35,19 +35,20 @@ func WithAPIOptions(opts ...option.ClientOption) Option {
 	}
 }
 
-// NewClient creates a GTM API client with the given credentials file.
+// NewClient creates a GTM API client. When credentialsFile is empty,
+// Application Default Credentials (ADC) are used, which supports
+// Workload Identity Federation on GitHub Actions, GitLab CI, and other CI/CD platforms.
 func NewClient(ctx context.Context, accountID string, credentialsFile string, opts ...Option) (*Client, error) {
 	o := &options{}
 	for _, fn := range opts {
 		fn(o)
 	}
 
-	apiOpts := o.apiOpts
+	apiOpts := append([]option.ClientOption{
+		option.WithScopes(tagmanager.TagmanagerManageUsersScope),
+	}, o.apiOpts...)
 	if credentialsFile != "" {
-		apiOpts = append([]option.ClientOption{
-			option.WithCredentialsFile(credentialsFile), //nolint:staticcheck // no replacement available yet
-			option.WithScopes(tagmanager.TagmanagerManageUsersScope),
-		}, apiOpts...)
+		apiOpts = append(apiOpts, option.WithCredentialsFile(credentialsFile)) //nolint:staticcheck // no replacement available yet
 	}
 
 	svc, err := tagmanager.NewService(ctx, apiOpts...)

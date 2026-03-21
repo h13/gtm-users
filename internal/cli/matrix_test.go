@@ -85,24 +85,6 @@ func TestRunMatrix_EmptyState(t *testing.T) {
 	}
 }
 
-func TestRunMatrix_MissingCredentials(t *testing.T) {
-	opts := &rootOptions{
-		credentialsPath: "",
-		stdout:          &bytes.Buffer{},
-		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	err := runMatrix(opts, "123")
-	if err == nil {
-		t.Fatal("expected error for missing credentials, got nil")
-	}
-	if !strings.Contains(err.Error(), "--credentials") {
-		t.Errorf("error = %q, want mention of --credentials", err.Error())
-	}
-}
-
 func TestRunMatrix_ClientError(t *testing.T) {
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",

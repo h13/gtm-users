@@ -132,24 +132,6 @@ func TestRunBackup_CustomOutputPath(t *testing.T) {
 	}
 }
 
-func TestRunBackup_MissingCredentials(t *testing.T) {
-	opts := &rootOptions{
-		credentialsPath: "",
-		stdout:          &bytes.Buffer{},
-		newClient: func(_ context.Context, _, _ string) (gtmClient, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	err := runBackup(opts, "123", "out.yaml")
-	if err == nil {
-		t.Fatal("expected error for missing credentials, got nil")
-	}
-	if !strings.Contains(err.Error(), "--credentials") {
-		t.Errorf("error = %q, want mention of --credentials", err.Error())
-	}
-}
-
 func TestRunBackup_ClientError(t *testing.T) {
 	opts := &rootOptions{
 		credentialsPath: "fake-creds.json",

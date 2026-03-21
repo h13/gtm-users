@@ -25,10 +25,6 @@ func newExportCmd(opts *rootOptions) *cobra.Command {
 }
 
 func runExport(opts *rootOptions, accountID string) error {
-	if opts.credentialsPath == "" {
-		return fmt.Errorf("--credentials flag is required for export")
-	}
-
 	ctx := context.Background()
 	client, err := opts.newClient(ctx, accountID, opts.credentialsPath)
 	if err != nil {
