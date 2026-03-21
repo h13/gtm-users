@@ -37,6 +37,36 @@ func jsonResponse(w http.ResponseWriter, v interface{}) {
 	json.NewEncoder(w).Encode(v) //nolint:errcheck,gosec
 }
 
+func TestNewClient_ADC(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/tagmanager/v2/accounts/12345/user_permissions", func(w http.ResponseWriter, _ *http.Request) {
+		jsonResponse(w, &tagmanager.ListUserPermissionsResponse{})
+	})
+
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	client, err := NewClient(context.Background(), "12345", "",
+		WithAPIOptions(
+			option.WithHTTPClient(srv.Client()),
+			option.WithEndpoint(srv.URL),
+			option.WithoutAuthentication(),
+		),
+	)
+	if err != nil {
+		t.Fatalf("NewClient with empty credentials (ADC) should succeed: %v", err)
+	}
+
+	// Verify the client is functional — scopes must be set even without credentials file.
+	st, err := client.FetchState(context.Background())
+	if err != nil {
+		t.Fatalf("FetchState with ADC client: %v", err)
+	}
+	if st.AccountID != "12345" {
+		t.Errorf("account ID = %q, want 12345", st.AccountID)
+	}
+}
+
 func TestNewClient_InvalidCredentials(t *testing.T) {
 	_, err := NewClient(context.Background(), "12345", "/nonexistent/credentials.json")
 	if err == nil {
