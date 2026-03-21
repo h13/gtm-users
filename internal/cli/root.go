@@ -53,7 +53,7 @@ func NewRootCmd(version string, opts ...CmdOption) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&o.configPath, "config", "gtm-users.yaml", "path to config file")
-	cmd.PersistentFlags().StringVar(&o.credentialsPath, "credentials", "", "path to GCP service account credentials JSON")
+	cmd.PersistentFlags().StringVar(&o.credentialsPath, "credentials", "", "path to GCP credentials JSON (omit to use Application Default Credentials)")
 	cmd.PersistentFlags().StringVar(&o.format, "format", "text", "output format (text|json)")
 	cmd.PersistentFlags().BoolVar(&o.noColor, "no-color", false, "disable colored output")
 
