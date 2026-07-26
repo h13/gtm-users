@@ -36,6 +36,10 @@ linters:
     goconst:
       min-len: 3
       min-occurrences: 3
+      # Test files are already excluded from goconst reporting below, but
+      # goconst still COUNTS occurrences there, so a string used once in
+      # production code and twice in its tests trips min-occurrences.
+      ignore-tests: true
     revive:
       rules:
         - name: exported

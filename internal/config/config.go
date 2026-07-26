@@ -38,6 +38,9 @@ const (
 	PermissionPublish ContainerPermission = "publish"
 )
 
+// msgRequired is the ValidationError message for a missing mandatory field.
+const msgRequired = "required"
+
 // ContainerAccess pairs a container ID with a permission level.
 type ContainerAccess struct {
 	ContainerID string              `yaml:"container_id"`
@@ -229,7 +232,7 @@ func Validate(cfg Config) []ValidationError {
 
 func validateTopLevel(errs []ValidationError, cfg Config) []ValidationError {
 	if cfg.AccountID == "" {
-		errs = append(errs, ValidationError{Field: "account_id", Message: "required"})
+		errs = append(errs, ValidationError{Field: "account_id", Message: msgRequired})
 	}
 
 	if cfg.Mode != ModeAdditive && cfg.Mode != ModeAuthoritative {
@@ -252,7 +255,7 @@ func validateUser(errs []ValidationError, u User, idx int, seen map[string]bool)
 	email := strings.ToLower(u.Email)
 	switch {
 	case email == "":
-		errs = append(errs, ValidationError{Field: prefix + ".email", Message: "required"})
+		errs = append(errs, ValidationError{Field: prefix + ".email", Message: msgRequired})
 	case !emailRegex.MatchString(email):
 		errs = append(errs, ValidationError{Field: prefix + ".email", Message: fmt.Sprintf("invalid email: %s", u.Email)})
 	case seen[email]:
@@ -282,7 +285,7 @@ func validateContainerAccess(errs []ValidationError, ca ContainerAccess, prefix 
 
 	switch {
 	case ca.ContainerID == "":
-		errs = append(errs, ValidationError{Field: caPrefix + ".container_id", Message: "required"})
+		errs = append(errs, ValidationError{Field: caPrefix + ".container_id", Message: msgRequired})
 	case !containerIDRe.MatchString(ca.ContainerID):
 		errs = append(errs, ValidationError{
 			Field:   caPrefix + ".container_id",
