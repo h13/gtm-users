@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Run drift detection
-        uses: h13/gtm-users@v1
+        uses: h13/gtm-users@789f3aeac69719c5fa1b09ce9200f55db507e06c # v1
         with:
           command: drift
           credentials: ${{ secrets.GTM_CREDENTIALS }}
